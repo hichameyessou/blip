@@ -1,4 +1,4 @@
-/** @jsx React.DOM */
+
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -16,17 +16,17 @@
 
 var React = require('react');
 
-var logoSrc = require('./images/blip-logo-290x290.png');
+var logoSrc = require('./images/tidepool-logo-880x96.png');
 
 var LoginLogo = React.createClass({
   render: function() {
-    /* jshint ignore:start */
+
     return (
       <div className="login-logo">
-        <img src={logoSrc} alt="Blip"/>
+        <img src={logoSrc} alt="Tidepool"/>
       </div>
     );
-    /* jshint ignore:end */
+
   }
 });
 

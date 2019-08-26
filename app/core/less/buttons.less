@@ -28,14 +28,12 @@ a.btn {
   white-space: nowrap;
   background-image: none;
 
-  border: 1px solid @gray-dark;
-  border-radius: 0px;
+  border: 0px solid @gray-dark;
+  border-radius: 4px;
 
-  font-size: inherit;
+  font-size: @font-size-small;
   line-height: (1.5*@spacing-base) - 2*@btn-border-size;
-  padding: 0 (@spacing-base - 2*@btn-border-size);
-
-  font-weight: bold;
+  padding: 7px (1.5*@spacing-base - 2*@btn-border-size);
 
   &:hover,
   &:focus {
@@ -64,15 +62,13 @@ a.btn {
 // Main action button style
 .btn-primary,
 a.btn-primary {
-  background-color: @blue-green;
-  border-color: @blue-green;
-  color: #fff;
+  background-color: @purple;
+  color: @white-color;
 
   &:hover,
   &:focus,
   &:active {
-    background-color: @blue-green-light;
-    border-color: @blue-green-light;
+    background-color: @purple-dark;
   }
 }
 
@@ -86,14 +82,14 @@ a.btn-secondary {
   &:hover,
   &:focus,
   &:active {
-    text-decoration: underline;
-    color: @blue-green-light;
+    text-decoration: none;
+    color: @purple;
   }
 }
 
 .btn-tertiary,
 a.btn-tertiary {
-  background-color: #fff;
+  background-color: @white-color;
   border-color: @blue-green;
   color: @blue-green;
 
@@ -105,18 +101,30 @@ a.btn-tertiary {
   }
 }
 
+.btn-danger,
+a.btn-danger {
+  background-color: @brand-coral;
+  color: @white-color;
+
+  &:hover,
+  &:focus,
+  &:active {
+    background-color: @brand-orange;
+  }
+}
+
 .btn-chart,
 a.btn-chart {
   font-weight: normal;
-  background-color: #fff;
-  border-color: fade(@gray-blue, 15%);
-  color: @gray-blue;
+  background-color: @white-color;
+  border-color: fade(@purple-highcontrast, 15%);
+  color: @purple-highcontrast;
 
   &:hover,
   &:focus,
   &:active {
     background-color: fade(@blue-green-light, 50%);
-    border-color: fade(@gray-blue, 25%);
+    border-color: fade(@purple-highcontrast, 25%);
   }
 }
 
@@ -124,7 +132,7 @@ a.btn-chart {
 a.btn-chart-control {
   font-weight: normal;
   background-color: @light-blue;
-  color: @gray-blue;
+  color: @purple-highcontrast;
   border: none;
   margin: 0 @spacing-tiny;
 
@@ -136,6 +144,6 @@ a.btn-chart-control {
 
   &.active {
     background-color: @gray-dark;
-    color: #fff;
+    color: @white-color;
   }
 }

@@ -12,18 +12,23 @@
  * You should have received a copy of the License along with this program; if
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
-module.exports = function myErrorHandler(errorMessage, fileUrl, lineNumber, colno, error) {
-  var ERR_GENERIC_LIST = [
-    'Whoops! Blip\'s servers got clogged with glucose tabs.',
-    'Whoops! Blip ran out of test strips...',
-    'Whoa, sorry about that. Looks like Blip needs to change the battery on its pump.'
-  ];
-  var ERR_GENERIC_HELP = 'Blip is stuck and isn\'t doing what you want it to do. We\'re sorry for the trouble.';
-  var ERR_SENT_TO_SERVER = 'Blip will attempt to send the details to our server.';
-  var ERR_PLEASE_SEND_DETAIL = 'We were unable to log this error to our server so could you please send us a note at <a style="text-decoration: underline;" href="mailto:support@tidepool.org">support@tidepool.org</a> and we\'ll try to see what broke?';
-  var html;
 
-  var details = {
+import i18next from './core/language';
+
+const t = i18next.t.bind(i18next);
+
+export default function myErrorHandler(errorMessage, fileUrl, lineNumber, colno, error) {
+  const ERR_GENERIC_LIST = [
+    t('Whoops! Tidepool\'s servers got clogged with glucose tabs.'),
+    t('Whoops! Tidepool ran out of test strips...'),
+    t('Whoa, sorry about that. Looks like Tidepool needs to change the battery on its pump.')
+  ];
+  const ERR_GENERIC_HELP = t('Tidepool is stuck and isn\'t doing what you want it to do. We\'re sorry for the trouble.');
+  const ERR_SENT_TO_SERVER = t('Tidepool will attempt to send the details to our server.');
+  const ERR_PLEASE_SEND_DETAIL = t('We were unable to log this error to our server so could you please send us a note at <a style="text-decoration: underline;" href="mailto:support@tidepool.org">support@tidepool.org</a> and we\'ll try to see what broke?');
+  let html;
+
+  const details = {
     utcDateTime: new Date().toISOString(),
     href: window.location.href,
     msg: errorMessage,
@@ -32,10 +37,7 @@ module.exports = function myErrorHandler(errorMessage, fileUrl, lineNumber, coln
     cn: colno
   };
 
-  var chosenMessage = ERR_GENERIC_LIST[Math.floor(Math.random() * (ERR_GENERIC_LIST.length))];
-
-  try{
-
+  try {
     //try and send it to the server in the first instance
     window.app.api.errors.log(error,'Caught in onerror',details);
 
@@ -47,9 +49,7 @@ module.exports = function myErrorHandler(errorMessage, fileUrl, lineNumber, coln
       '<a id="error-close" style="text-decoration: underline; position: absolute; top: 10px; right: 15px;" href="#"><i class="icon-close"></i></a>',
     '</div>'
     ].join(' ');
-
-
-  }catch(err){
+  } catch(err) {
     console.log('unable to send details to server');
 
     details.error = error;
@@ -64,7 +64,7 @@ module.exports = function myErrorHandler(errorMessage, fileUrl, lineNumber, coln
     ].join(' ');
   }
 
-  var style = [
+  const style = [
     'content: "";',
     'background: rgba(0,0,0,.6);',
     'position: fixed;',
@@ -75,12 +75,12 @@ module.exports = function myErrorHandler(errorMessage, fileUrl, lineNumber, coln
     'z-index: 10;'
   ].join(' ');
 
-  var el = document.createElement('div');
+  const el = document.createElement('div');
   el.innerHTML = html;
   el.setAttribute('style', style);
   document.body.appendChild(el);
 
-  var closeEl = document.getElementById('error-close');
+  const closeEl = document.getElementById('error-close');
   closeEl.addEventListener('click', function(e) {
     e.preventDefault();
     el.parentNode.removeChild(el);

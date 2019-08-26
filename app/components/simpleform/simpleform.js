@@ -1,4 +1,4 @@
-/** @jsx React.DOM */
+
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -28,14 +28,17 @@ var SimpleForm = React.createClass({
     submitButtonText: React.PropTypes.string,
     submitDisabled: React.PropTypes.bool,
     onSubmit: React.PropTypes.func,
+    onChange: React.PropTypes.func,
     notification: React.PropTypes.object,
-    disabled: React.PropTypes.bool
+    disabled: React.PropTypes.bool,
+    renderSubmit: React.PropTypes.bool,
   },
 
   getDefaultProps: function() {
     return {
       formValues: {},
-      validationErrors: {}
+      validationErrors: {},
+      renderSubmit: true,
     };
   },
 
@@ -67,31 +70,28 @@ var SimpleForm = React.createClass({
 
   render: function() {
     var inputs = this.renderInputs();
-    var submitButton = this.renderSubmitButton();
+    var submitButton = this.props.renderSubmit ? this.renderSubmitButton() : null;
     var notification = this.renderNotification();
 
-    /* jshint ignore:start */
     return (
         <form className="simple-form">
-          <div className="simple-form-inputs" ref="inputs">
+          <div className="simple-form-inputs" ref="inputs" key="inputs">
             {inputs}
           </div>
+            {this.props.children}
           <div className="simple-form-action-group">
             {submitButton}
             {notification}
           </div>
         </form>
     );
-    /* jshint ignore:end */
   },
 
   renderInputs: function() {
     var self = this;
     var inputs = this.props.inputs || [];
     if (inputs.length) {
-      /* jshint ignore:start */
       return _.map(inputs, self.renderInput);
-      /* jshint ignore:end */
     }
 
     return null;
@@ -102,12 +102,13 @@ var SimpleForm = React.createClass({
     var type = input.type;
     var label = input.label;
     var items = input.items;
+    var text = input.text;
+    var multi = input.multi || false;
     var value = this.state.formValues[name];
     var error = this.props.validationErrors[name];
     var placeholder = input.placeholder;
     var disabled = this.props.disabled || input.disabled;
 
-    /* jshint ignore:start */
     return (
       <InputGroup
         key={name}
@@ -115,20 +116,20 @@ var SimpleForm = React.createClass({
         label={label}
         items={items}
         value={value}
+        text={text}
         error={error}
         type={type}
+        multi={multi}
         placeholder={placeholder}
         disabled={disabled}
         onChange={this.handleChange}/>
     );
-    /* jshint ignore:end */
   },
 
   renderSubmitButton: function() {
     var text = this.props.submitButtonText || 'Submit';
     var disabled = this.props.disabled || this.props.submitDisabled;
 
-    /* jshint ignore:start */
     return (
       <button
         className="simple-form-submit btn btn-primary js-form-submit"
@@ -136,7 +137,6 @@ var SimpleForm = React.createClass({
         disabled={disabled}
         ref="submitButton">{text}</button>
     );
-    /* jshint ignore:end */
   },
 
   renderNotification: function() {
@@ -150,11 +150,9 @@ var SimpleForm = React.createClass({
       ].join(' ');
       var message = notification.message;
 
-      /* jshint ignore:start */
       return (
         <div className={className} ref="notification">{message}</div>
       );
-      /* jshint ignore:end */
     }
     return null;
   },
@@ -163,7 +161,9 @@ var SimpleForm = React.createClass({
     var key = attributes.name;
     var value = attributes.value;
 
-    if (key) {
+    if (this.props.onChange) {
+      this.props.onChange(attributes);
+    } else if (key) {
       var formValues = _.clone(this.state.formValues);
       formValues[key] = value;
       this.setState({formValues: formValues});

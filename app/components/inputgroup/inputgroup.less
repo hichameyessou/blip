@@ -27,8 +27,8 @@
 .input-group-radio-label {
   padding-left: 20px;
   cursor: pointer;
-
   margin-bottom: 10px;
+
   &:last-child {
     margin-bottom: 0;
   }
@@ -43,4 +43,53 @@
 
 .input-group textarea {
   resize: vertical;
+}
+
+.input-group-label {
+  margin-bottom: 7px;
+}
+
+.input-group-explanation {
+  margin: 15px -40px;
+  text-align: center;
+  font-weight: 300;
+}
+
+.input-group-control.placeholder {
+  color: @gray-dark;
+}
+
+.input-group .Select {
+  padding: 0;
+  border: 0;
+
+  .Select__control {
+    min-height: 40px;
+    width: 100%;
+    border-radius: 0;
+    float: left;
+
+    &.Select__control--is-focused {
+      border: 1px solid transparent;
+    }
+  }
+
+  .Select__multi-value {
+    border: 1px solid @blue-green;
+    background-color: rgba(11, 158, 179, 0.08);
+
+    .Select__multi-value__label {
+      color: @blue-green;
+    }
+
+    .Select__multi-value__remove {
+      border-left: 1px solid @blue-green;
+      color: @blue-green;
+
+      &:hover {
+        background-color: rgba(0, 113, 230, 0.08);
+        color: #0071e6;
+      }
+    }
+  }
 }

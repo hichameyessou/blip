@@ -15,12 +15,25 @@ Thumbs.db
 .Trashes
 
 # Application specific files
+*.log
+_book
 node_modules
-npm-debug.log
 tmp
-dist
+deploy/
+dist/
 config/*
-!config/sample.sh
-!config/mock.sh
+!config/local.sh
 test/bin
-sauce_connect.log
+web/
+artifact_node.sh
+coverage/
+
+
+# GitBook
+_book/
+
+# Use yarn.lock
+package-lock.json
+
+# Ignore old translation files
+locales/*/*_old.json

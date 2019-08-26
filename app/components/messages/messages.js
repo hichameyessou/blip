@@ -1,7 +1,3 @@
-/**
- * @jsx React.DOM
- */
-
 /*
 == BSD2 LICENSE ==
 Copyright (c) 2014, Tidepool Project
@@ -18,16 +14,16 @@ You should have received a copy of the License along with this program; if
 not, you can obtain one from Tidepool Project at tidepool.org.
 == BSD2 LICENSE ==
 */
-'use strict';
 
-var React = require('react');
-var _ = require('lodash');
-var sundial = require('sundial');
+import React from 'react';
+import _ from 'lodash';
+import sundial from 'sundial';
+import { translate } from 'react-i18next';
 
 var Message = require('./message');
 var MessageForm = require('./messageform');
 
-var Messages = React.createClass({
+var Messages = translate()(React.createClass({
   propTypes: {
     messages: React.PropTypes.array,
     createDatetime: React.PropTypes.string,
@@ -38,12 +34,6 @@ var Messages = React.createClass({
     onEdit: React.PropTypes.func,
     onNewMessage: React.PropTypes.func,
     timePrefs: React.PropTypes.object.isRequired
-  },
-  getDefaultProps: function () {
-    return {
-      NOTE_PROMPT : 'Type a new note here ...',
-      COMMENT_PROMPT : 'Type a comment here ...'
-    };
   },
   componentWillReceiveProps: function(nextProps) {
     this.setState({messages: nextProps.messages});
@@ -63,8 +53,7 @@ var Messages = React.createClass({
     }
     return saveEdit;
   },
-  renderNote: function(message) {
-    /* jshint ignore:start */
+  renderNote: function(message){
     return (
       <Message
         key={message.id}
@@ -73,10 +62,9 @@ var Messages = React.createClass({
         onSaveEdit={this.getSaveEdit(message.userid)}
         timePrefs={this.props.timePrefs} />
       );
-    /* jshint ignore:end */
+
   },
-  renderComment: function(message) {
-    /* jshint ignore:start */
+  renderComment: function(message){
     return (
       <Message
         key={message.id}
@@ -85,7 +73,7 @@ var Messages = React.createClass({
         onSaveEdit={this.getSaveEdit(message.userid)}
         timePrefs={this.props.timePrefs} />
       );
-    /* jshint ignore:end */
+
   },
   renderThread: function() {
     if (this.isMessageThread()) {
@@ -97,11 +85,11 @@ var Messages = React.createClass({
         }
       }.bind(this));
 
-      /* jshint ignore:start */
+
       return (
         <div className='messages-thread'>{thread}</div>
       );
-      /* jshint ignore:end */
+
     }
 
     return;
@@ -110,41 +98,40 @@ var Messages = React.createClass({
     return !_.isEmpty(this.state.messages);
   },
   renderCommentOnThreadForm: function() {
-    var submitButtonText = 'Comment';
+    const { t } = this.props;
+    var submitButtonText = t('Comment_submit');
 
-    /* jshint ignore:start */
+
     return (
       <div className='messages-form'>
         <MessageForm
-          messagePrompt={this.props.COMMENT_PROMPT}
+          messagePrompt={t('Type a comment here ...')}
           saveBtnText={submitButtonText}
           onSubmit={this.handleAddComment}
           timePrefs={this.props.timePrefs} />
       </div>
     );
-    /* jshint ignore:end */
   },
   renderNewThreadForm: function() {
-    var submitButtonText = 'Post';
+    const { t } = this.props;
+    var submitButtonText = t('Post_submit');
 
-    /* jshint ignore:start */
+
     return (
       <div className='messages-form'>
         <MessageForm
           formFields={{editableTimestamp: this.props.createDatetime}}
-          messagePrompt={this.props.NOTE_PROMPT}
+          messagePrompt={t('Type a new note here ...')}
           saveBtnText={submitButtonText}
           onSubmit={this.handleCreateNote}
           onCancel={this.handleClose}
           timePrefs={this.props.timePrefs} />
       </div>
     );
-    /* jshint ignore:end */
   },
-  renderClose: function() {
-    /* jshint ignore:start */
+  renderClose:function(){
     return (<a className='messages-close' onClick={this.handleClose}>Close</a>);
-    /* jshint ignore:end */
+
   },
   render: function() {
     var thread = this.renderThread();
@@ -158,7 +145,7 @@ var Messages = React.createClass({
     }
 
     return (
-     /* jshint ignore:start */
+
      <div className='messages'>
       <div className='messages-inner'>
         <div className='messages-header'>
@@ -170,7 +157,6 @@ var Messages = React.createClass({
         </div>
       </div>
      </div>
-     /* jshint ignore:end */
     );
   },
   getParent: function() {
@@ -183,6 +169,7 @@ var Messages = React.createClass({
     return;
   },
   handleAddComment: function(formValues, cb) {
+    var self = this;
     if (_.isEmpty(formValues) === false) {
       var addComment = this.props.onSave;
       var parent = this.getParent();
@@ -195,25 +182,23 @@ var Messages = React.createClass({
         timestamp: formValues.timestamp
       };
 
-      addComment(comment, function(error, commentId) {
-        if (commentId) {
-          if(cb){
-            //let the form know all is good
-            cb();
-          }
-          //set so we can display right away
-          comment.id = commentId;
-          comment.user = this.props.user.profile;
-          var withReply = this.state.messages;
-          withReply.push(comment);
-          this.setState({
-            messages: withReply
-          });
+      addComment(comment, function(err, commentId) {
+        if(cb){
+          cb();
         }
-      }.bind(this));
+        comment.id = commentId ;
+        comment.user = self.props.user.profile;
+        var withReply = self.state.messages;
+        withReply.push(comment);
+        self.setState({
+          messages: withReply
+        });
+      });
+
     }
   },
   handleCreateNote: function(formValues,cb) {
+    var self = this;
     if (_.isEmpty(formValues) === false) {
       var createNote = this.props.onSave;
 
@@ -227,30 +212,28 @@ var Messages = React.createClass({
         )
       };
 
-      createNote(message, function(error, messageId) {
-        if (messageId) {
-          if(cb){
-            //let the form know all is good
-            cb();
-          }
-          //set so we can display right away
-          message.id = messageId;
-          message.user = this.props.user.profile;
-          //give this message to anyone that needs it
-          this.props.onNewMessage(message);
-
-          // Close the modal if we can, else clear form and display new message
-          var close = this.props.onClose;
-          if (close) {
-            close();
-          }
-          else {
-            this.setState({
-              messages: [message]
-            });
-          }
+      createNote(message, function(err, messageId) {
+        if(cb){
+          //let the form know all is good
+          cb();
         }
-      }.bind(this));
+        //set so we can display right away
+        message.id = messageId // TODO: Need to fix this too;
+        message.user = self.props.user.profile;
+        //give this message to anyone that needs it
+        self.props.onNewMessage(message);
+
+        // Close the modal if we can, else clear form and display new message
+        var close = self.props.onClose;
+        if (close) {
+          close();
+        }
+        else {
+          self.setState({
+            messages: [message]
+          });
+        }
+      });
     }
   },
   handleEditNote: function(updated) {
@@ -267,6 +250,6 @@ var Messages = React.createClass({
       close();
     }
   }
-});
+}));
 
 module.exports = Messages;

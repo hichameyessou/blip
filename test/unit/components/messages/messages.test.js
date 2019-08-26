@@ -1,10 +1,10 @@
-/** @jsx React.DOM */
-
 /* global chai */
-window.config = {};
+/* global describe */
+/* global sinon */
+/* global it */
 
 var React = require('react');
-var TestUtils = require('react/lib/ReactTestUtils');
+var TestUtils = require('react-addons-test-utils');
 var expect = chai.expect;
 
 var Messages = require('../../../../app/components/messages/messages');
@@ -15,33 +15,15 @@ describe('Messages', function () {
   });
 
   describe('render', function() {
-    it('should console.warn when required props are missing', function () {
-      console.warn = sinon.stub();
-      var props = {};
-      var elem = React.createElement(Messages, props);
-      var render = TestUtils.renderIntoDocument(elem);
-
-      expect(console.warn.calledWith('Warning: Required prop `timePrefs` was not specified in `Messages`.')).to.equal(true);
-      expect(console.warn.calledWith('Warning: Required prop `timePrefs` was not specified in `MessageForm`. Check the render method of `Messages`.')).to.equal(true);
-      expect(console.warn.callCount).to.equal(2);
-    });
-
-    it('should render without problems with required props are present', function () {
-      console.warn = sinon.stub();
+    it('should render without problems when required props are present', function () {
+      console.error = sinon.stub();
       var props = {
-        messages : [],
-        createDatetime : '',
-        user : {},
-        patient : {},
-        onClose : sinon.stub(),
-        onSave : sinon.stub(),
-        onEdit : sinon.stub(),
-        onNewMessage : sinon.stub(),
         timePrefs: {}
       };
       var elem = React.createElement(Messages, props);
       var render = TestUtils.renderIntoDocument(elem);
-      expect(console.warn.callCount).to.equal(0);
+      expect(render).to.be.ok;
+      expect(console.error.callCount).to.equal(0);
     });
   });
 
@@ -52,9 +34,9 @@ describe('Messages', function () {
       };
       var elem = React.createElement(Messages, props);
       var render = TestUtils.renderIntoDocument(elem);
-      var state = render.getInitialState();
+      var state = render.getWrappedInstance().getInitialState();
 
-      expect(state.messages.length).to.equal(0);
+      expect(state.messages).to.deep.equal(props.messages);
     });
   });
 });

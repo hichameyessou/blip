@@ -1,4 +1,3 @@
-/** @jsx React.DOM */
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -14,37 +13,47 @@
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
 
-var React = require('react');
-var _ = require('lodash');
+import React from 'react';
+import { connect } from 'react-redux';
+import { translate } from 'react-i18next';
+import { bindActionCreators } from 'redux';
+import { Link } from 'react-router';
+import _ from 'lodash';
 
-var config = require('../../config');
+import * as actions from '../../redux/actions';
 
-var utils = require('../../core/utils');
-var LoginNav = require('../../components/loginnav');
-var LoginLogo = require('../../components/loginlogo');
-var SimpleForm = require('../../components/simpleform');
+import config from '../../config';
 
-var ConfirmPasswordReset = React.createClass({
+import utils from '../../core/utils';
+import LoginNav from '../../components/loginnav';
+import LoginLogo from '../../components/loginlogo';
+import SimpleForm from '../../components/simpleform';
+
+export var ConfirmPasswordReset = translate()(React.createClass({
   propTypes: {
-    resetKey: React.PropTypes.string.isRequired,
+    acknowledgeNotification: React.PropTypes.func.isRequired,
+    api: React.PropTypes.object.isRequired,
+    notification: React.PropTypes.object,
     onSubmit: React.PropTypes.func.isRequired,
-    trackMetric: React.PropTypes.func.isRequired
+    resetKey: React.PropTypes.string.isRequired,
+    success: React.PropTypes.bool.isRequired,
+    trackMetric: React.PropTypes.func.isRequired,
+    working: React.PropTypes.bool.isRequired
   },
 
   formInputs: function() {
+    const { t } = this.props;
     return [
-      {name: 'email', label: 'Email', type: 'email'},
+      {name: 'email', label: t('Email'), type: 'email'},
       {
         name: 'password',
-        label: 'New password',
-        type: 'password',
-        placeholder: '******'
+        label: t('New password'),
+        type: 'password'
       },
       {
         name: 'passwordConfirm',
-        label: 'Confirm new password',
-        type: 'password',
-        placeholder: '******'
+        label: t('Confirm new password'),
+        type: 'password'
       }
     ];
   },
@@ -60,16 +69,17 @@ var ConfirmPasswordReset = React.createClass({
   },
 
   render: function() {
+    const { t } = this.props;
     var content;
-    if (this.state.success) {
+    if (this.props.success) {
       content = (
         <div className="PasswordReset-intro">
-          <div className="PasswordReset-title">{'Success!'}</div>
+          <div className="PasswordReset-title">{t('Success!')}</div>
           <div className="PasswordReset-instructions">
-            <p>{'Your password was changed successfully. You can now log in with your new password.'}</p>
+            <p>{t('Your password was changed successfully. You can now log in with your new password.')}</p>
           </div>
           <div className="PasswordReset-button">
-            <a className="btn btn-primary" href="#/login">Log in</a>
+            <Link className="btn btn-primary" to="/login">{t('Log in')}</Link>
           </div>
         </div>
       );
@@ -78,11 +88,11 @@ var ConfirmPasswordReset = React.createClass({
       content = (
         <div>
           <div className="PasswordReset-intro">
-            <div className="PasswordReset-title">{'Change your password'}</div>
+            <div className="PasswordReset-title">{t('Change your password')}</div>
           </div>
           <div className="PasswordReset-form">{this.renderForm()}</div>
           <div className="PasswordReset-link">
-            <a href="#/login">Cancel</a>
+            <Link to="/login">{t('Cancel')}</Link>
           </div>
         </div>
       );
@@ -104,7 +114,8 @@ var ConfirmPasswordReset = React.createClass({
   },
 
   renderForm: function() {
-    var submitButtonText = this.state.working ? 'Saving...' : 'Save';
+    const { t } = this.props;
+    var submitButtonText = this.state.working ? t('Saving...') : t('Save');
 
     return (
       <SimpleForm
@@ -134,12 +145,12 @@ var ConfirmPasswordReset = React.createClass({
 
     formValues = this.prepareFormValuesForSubmit(formValues);
 
-    this.submitFormValues(formValues);
+    this.props.onSubmit(this.props.api, formValues);
   },
 
   resetFormStateBeforeSubmit: function(formValues) {
+    this.props.acknowledgeNotification('confirmingPasswordReset');
     this.setState({
-      working: true,
       formValues: formValues,
       validationErrors: {},
       notification: null
@@ -147,10 +158,11 @@ var ConfirmPasswordReset = React.createClass({
   },
 
   validateFormValues: function(formValues) {
+    const { t } = this.props;
     var validationErrors = {};
-    var IS_REQUIRED = 'This field is required.';
-    var INVALID_EMAIL = 'Invalid email address.';
-    var SHORT_PASSWORD = 'Password must be at least ' + config.PASSWORD_MIN_LENGTH + ' characters long.';
+    var IS_REQUIRED = t('This field is required.');
+    var INVALID_EMAIL = t('Invalid email address.');
+    var SHORT_PASSWORD = t('Password must be at least {{minLength}} characters long.', {minLength: config.PASSWORD_MIN_LENGTH});
 
     if (!formValues.email) {
       validationErrors.email = IS_REQUIRED;
@@ -173,13 +185,12 @@ var ConfirmPasswordReset = React.createClass({
         validationErrors.passwordConfirm = IS_REQUIRED;
       }
       else if (formValues.passwordConfirm !== formValues.password) {
-        validationErrors.passwordConfirm = 'Passwords don\'t match.';
+        validationErrors.passwordConfirm = t('Passwords don\'t match.');
       }
     }
 
     if (!_.isEmpty(validationErrors)) {
       this.setState({
-        working: false,
         validationErrors: validationErrors
       });
     }
@@ -193,29 +204,32 @@ var ConfirmPasswordReset = React.createClass({
       email: formValues.email,
       password: formValues.password
     };
-  },
-
-  submitFormValues: function(formValues) {
-    var self = this;
-    var submit = this.props.onSubmit;
-
-    submit(formValues, function(err) {
-      if (err) {
-        return self.setState({
-          working: false,
-          notification: {
-            type: 'error',
-            message: 'We couldn\'t change your password. You may have mistyped your email, or the reset link may have expired.'
-          }
-        });
-      }
-
-      self.setState({
-        working: false,
-        success: true
-      });
-    });
   }
-});
+}));
 
-module.exports = ConfirmPasswordReset;
+/**
+ * Expose "Smart" Component that is connect-ed to Redux
+ */
+
+export function mapStateToProps(state) {
+  return {
+    notification: state.blip.working.confirmingPasswordReset.notification,
+    working: state.blip.working.confirmingPasswordReset.inProgress,
+    success: state.blip.passwordResetConfirmed
+  };
+}
+
+let mapDispatchToProps = dispatch => bindActionCreators({
+  onSubmit: actions.async.confirmPasswordReset,
+  acknowledgeNotification: actions.sync.acknowledgeNotification
+}, dispatch);
+
+let mergeProps = (stateProps, dispatchProps, ownProps) => {
+  return Object.assign({}, stateProps, dispatchProps, {
+    resetKey: ownProps.location.query.resetKey,
+    trackMetric: ownProps.routes[0].trackMetric,
+    api: ownProps.routes[0].api,
+  });
+};
+
+export default connect(mapStateToProps, mapDispatchToProps, mergeProps)(ConfirmPasswordReset);

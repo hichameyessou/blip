@@ -1,4 +1,4 @@
-/* global rm, mkdir, exec, ls*/
+/* global rm, mkdir, exec, ls, cp */
 require('shelljs/global');
 var fs = require('fs');
 var ms = require('ms');
@@ -9,23 +9,10 @@ console.log('Cleaning output directory "dist/"...');
 rm('-rf', 'dist');
 mkdir('-p', 'dist');
 
-var entry = (process.env.MOCK === 'true') ? './app/main.mock.js' : './app/main.prod.js';
+var entry = './app/main.prod.js';
 
 console.log('Building app from "' + entry + '"...');
-exec('webpack --entry \'' + entry + '\' --output-file \'bundle.[hash].js\' --devtool source-map --colors --progress');
-
-function getBundleFilename() {
-  var matches = ls('dist/bundle.*.js');
-  if (!(matches && matches.length)) {
-    throw new Error('Expected to find "dist/bundle.[hash].js"');
-  }
-  return matches[0].replace('dist/', '');
-}
-
-console.log('Copying "index.html"...');
-var indexHtml = fs.readFileSync('index.html', 'utf8');
-indexHtml = indexHtml.replace('bundle.js', getBundleFilename());
-indexHtml.to('dist/index.html');
+exec('webpack --entry \'' + entry + '\' --output-filename \'bundle.[hash].js\' --devtool source-map --colors --progress --optimize-minimize');
 
 var end = new Date();
 console.log('App built in ' + ms(end - start));

@@ -35,6 +35,7 @@ api.init = function(cb) {
   var tidepoolLog = bows('Tidepool');
   tidepool = createTidepoolClient({
     host: config.API_HOST,
+    dataHost: config.API_HOST + '/dataservices',
     uploadApi: config.UPLOAD_API,
     log: {
       warn: tidepoolLog,
@@ -51,6 +52,18 @@ api.init = function(cb) {
   tidepool.initialize(function() {
     api.log('Initialized');
     cb();
+  });
+};
+
+// ----- Server -----
+api.server = {};
+
+api.server.getTime = function(cb) {
+  tidepool.getTime(function(err, data) {
+    if (err) {
+      return cb(err);
+    }
+    cb(null, data);
   });
 };
 
@@ -102,35 +115,60 @@ api.user.signup = function(user, cb) {
       return cb(err);
     }
 
+    /**
+     * Because Platform Client handles this error slightly weirdly, and returns
+     * it in the account object we need to inspect the account object
+     * for the following object signature and then if found, call the
+     * callback with an error based on the contents of the object
+     *
+     * TODO: consider when refactoring platform client
+     */
+    if(account.code && account.code === 409) {
+      return cb({
+        status: account.code,
+        error: account.reason
+      });
+    }
+
     var userId = account.userid;
 
     tidepool.signupStart(userId, function(err, results){
-      if(err){
-        api.log('signup process error',err);
+      if (err){
+        api.log('signup process error', err);
       }
-      api.log('signup process started ',results);
+      api.log('signup process started');
     });
 
     // Then, add additional user info (full name, etc.) to profile
-    tidepool.addOrUpdateProfile(userId, newProfile, function(err, results) {
-      if (err) {
-        return cb(err);
-      }
+    if (newProfile) {
+      tidepool.addOrUpdateProfile(userId, newProfile, function(err, results) {
+        if (err) {
+          return cb(err);
+        }
 
+        api.log('added profile info to signup', results);
+        cb(null, userFromAccountAndProfile({
+          account: account,
+          profile: results
+        }));
+      });
+    } else {
       cb(null, userFromAccountAndProfile({
         account: account,
-        profile: results
       }));
-    });
+    }
   });
 };
 
-api.user.logout = function() {
+api.user.logout = function(cb) {
   api.log('POST /user/logout');
 
   if (!api.user.isAuthenticated()) {
     api.log('not authenticated but still destroySession');
     tidepool.destroySession();
+    if (cb) {
+      cb();
+    }
     return;
   }
 
@@ -139,8 +177,17 @@ api.user.logout = function() {
       api.log('error logging out but still destroySession');
       tidepool.destroySession();
     }
+    if (cb) {
+      cb();
+    }
     return;
   });
+};
+
+api.user.acceptTerms = function(termsData, cb){
+  api.log('PUT /user' );
+  api.log('terms accepted on', termsData.termsAccepted);
+  return tidepool.updateCurrentUser(termsData,cb);
 };
 
 api.user.destroySession = function() {
@@ -158,7 +205,9 @@ api.user.get = function(cb) {
   // ...and user profile information (full name, etc.)
   var getProfile = function(cb) {
     tidepool.findProfile(userId, function(err, profile) {
-      if (err) {
+      // We don't want to fire an error if the patient has no profile saved yet,
+      // so we check if the error status is not 404 first.
+      if (err && err.status !== 404) {
         return cb(err);
       }
 
@@ -180,9 +229,14 @@ api.user.get = function(cb) {
     });
   };
 
-  async.parallel({
+  var getPreferences = function(cb) {
+    api.metadata.preferences.get(userId, cb);
+  };
+
+  async.series({
     account: getAccount,
-    profile: getProfile
+    profile: getProfile,
+    preferences: getPreferences,
   },
   function(err, results) {
     if (err) {
@@ -196,12 +250,14 @@ api.user.get = function(cb) {
 api.user.put = function(user, cb) {
   api.log('PUT /user');
 
-  var account = accountFromUser(user);
-  var profile = profileFromUser(user);
+  const account = accountFromUser(user);
+  const profile = profileFromUser(user);
+  const preferences = preferencesFromUser(user);
 
   async.parallel({
     account: tidepool.updateCurrentUser.bind(tidepool, account),
-    profile: tidepool.addOrUpdateProfile.bind(tidepool, user.userid, profile)
+    profile: tidepool.addOrUpdateProfile.bind(tidepool, user.userid, profile),
+    preferences: tidepool.addOrUpdatePreferences.bind(tidepool, user.userid, preferences)
   },
   function(err, results) {
     if (err) {
@@ -213,7 +269,7 @@ api.user.put = function(user, cb) {
 };
 
 function accountFromUser(user) {
-  var account = _.pick(user, 'username', 'password', 'emails');
+  var account = _.pick(user, 'username', 'password', 'emails', 'roles');
   return account;
 }
 
@@ -221,12 +277,20 @@ function profileFromUser(user) {
   return _.cloneDeep(user.profile);
 }
 
-function userFromAccountAndProfile(results) {
-  var account = results.account;
-  var profile = results.profile;
+function preferencesFromUser(user) {
+  return _.cloneDeep(user.preferences);
+}
 
-  var user = _.pick(account, 'userid', 'username', 'emails');
+function userFromAccountAndProfile(results) {
+  // sometimes `account` isn't in the results after e.g., password update
+  var account = results.account || {};
+
+  // sometimes `profile` isn't in the results after e.g., after account signup
+  var profile = results.profile || {};
+
+  var user = account;
   user.profile = profile;
+  user.preferences = results.preferences;
 
   return user;
 }
@@ -251,6 +315,63 @@ api.user.confirmSignUp = function(key, callback) {
   return tidepool.signupConfirm(key, callback);
 };
 
+api.user.custodialConfirmSignUp = function(key, birthday, password, callback) {
+  api.log('PUT /confirm/accept/signup/'+key, 'custodial');
+  return tidepool.custodialSignupConfirm(key, birthday, password, callback);
+};
+
+
+// Get all patients in current user's "patients" group
+api.user.getDataDonationAccounts = function (cb) {
+  api.log('GET /patients');
+
+  tidepool.getAssociatedUsersDetails(tidepool.getUserId(), function (err, users) {
+    if (err) {
+      return cb(err);
+    }
+
+    //these are the accounts that have shared their data
+    //with a given set of permissions.
+    let dataDonationAccounts = _.filter(users, function (user) {
+      return personUtils.isDataDonationAccount(user);
+    });
+
+    dataDonationAccounts = _.map(dataDonationAccounts, function (user) {
+      return {
+        userid: user.userid,
+        email: user.username,
+        status: 'confirmed',
+      };
+    });
+
+    if (_.isEmpty(dataDonationAccounts)) {
+      return cb(null, []);
+    }
+
+    return cb(null, dataDonationAccounts);
+  });
+};
+
+api.user.getDataSources = function(cb) {
+  api.log('GET /v1/users/:userId/data_sources');
+
+  tidepool.getDataSourcesForUser(tidepool.getUserId(), cb);
+};
+
+api.user.createRestrictedToken = function(request, cb) {
+  api.log('POST /v1/users/:userId/restricted_tokens');
+
+  tidepool.createRestrictedTokenForUser(tidepool.getUserId(), request, cb);
+}
+
+api.user.createOAuthProviderAuthorization = function(provider, restrictedToken, cb) {
+  tidepool.createOAuthProviderAuthorization(provider, restrictedToken, cb);
+}
+
+api.user.deleteOAuthProviderAuthorization = function(provider, cb) {
+  tidepool.deleteOAuthProviderAuthorization(provider, cb);
+}
+
 // ----- Patient -----
 
 api.patient = {};
@@ -261,6 +382,14 @@ function getPerson(userId, cb) {
 
   tidepool.findProfile(userId, function(err, profile) {
     if (err) {
+      // Due to existing account creation anti-patterns, coupled with automatically sharing our demo
+      // account with new VCAs, we can end up with 404s that break login of our demo user when any
+      // VCA account has not completed their profile setup. Until this is addressed on the backend,
+      // we can't callback an error for 404s.
+      if (err.status === 404) {
+        person.profile = null;
+        return cb(null, person)
+      }
       return cb(err);
     }
 
@@ -298,7 +427,16 @@ function getPatient(patientId, cb) {
       }
 
       person.permissions = permissions;
-      return cb(null, person);
+
+      api.metadata.settings.get(patientId, function(err, settings) {
+        if (err) {
+          return cb(err);
+        }
+
+        person.settings = settings || {};
+
+        return cb(null, person);
+      });
     });
 
   });
@@ -370,7 +508,16 @@ api.patient.get = function(patientId, cb) {
           return member;
         });
         patient.team = members;
-        return cb(null, patient);
+
+        api.metadata.settings.get(userId, function(err, settings) {
+          if (err) {
+            return cb(err);
+          }
+
+          patient.settings = settings;
+
+          return cb(null, patient);
+        });
       });
     });
   });
@@ -394,33 +541,84 @@ api.patient.put = function(patient, cb) {
 api.patient.getAll = function(cb) {
   api.log('GET /patients');
 
-  var userId = tidepool.getUserId();
-
-  // First, get a list of of patient ids in user's "patients" group
-  tidepool.getViewableUsers(userId, function(err, permissions) {
+  tidepool.getAssociatedUsersDetails(tidepool.getUserId(), function(err, users) {
     if (err) {
       return cb(err);
     }
 
-    if (_.isEmpty(permissions)) {
+    //these are the accounts that have shared their data
+    //with a given set of permissions.
+    var viewableUsers = _.filter(users, function(user) {
+      return !_.isEmpty(user.trustorPermissions);
+    });
+
+    viewableUsers = _.map(viewableUsers, function(user) {
+      user.permissions = user.trustorPermissions
+      delete user.trustorPermissions
+      return user;
+    });
+
+    if (_.isEmpty(viewableUsers)) {
       return cb(null, []);
     }
 
-    // A user is always able to view her own data:
-    // filter her id from set of permissions
-    permissions = _.omit(permissions, userId);
-    // Convert to array of user ids
-    var patientIds = Object.keys(permissions);
+    return cb(null, viewableUsers);
+  });
+};
 
-    // Second, get the patient object for each patient id
-    async.map(patientIds, getPatient, function(err, patients) {
-      if (err) {
-        return cb(err);
-      }
-      // Filter any patient ids that returned nothing
-      patients = _.filter(patients);
-      return cb(null, patients);
-    });
+// ----- Metadata -----
+
+api.metadata = {};
+
+api.metadata.preferences = {};
+
+api.metadata.preferences.get = function(patientId, cb) {
+  tidepool.findPreferences(patientId, function(err, payload) {
+    // We don't want to fire an error if the patient has no preferences saved yet,
+    // so we check if the error status is not 404 first.
+    if (err && err.status !== 404) {
+      return cb(err);
+    }
+
+    var preferences = payload || {};
+
+    return cb(null, preferences);
+  });
+};
+
+api.metadata.preferences.put = function(patientId, preferences, cb) {
+  tidepool.addOrUpdatePreferences(patientId, preferences, function(err, payload) {
+    if (err) {
+      return cb(err);
+    }
+
+    return cb(null, preferences);
+  });
+};
+
+api.metadata.settings = {};
+
+api.metadata.settings.get = function(patientId, cb) {
+  // We don't want to fire an error if the patient has no settings saved yet,
+  // so we check if the error status is not 404 first.
+  tidepool.findSettings(patientId, function(err, payload) {
+    if (err && err.status !== 404) {
+      return cb(err);
+    }
+
+    var settings = payload || {};
+
+    return cb(null, settings);
+  });
+};
+
+api.metadata.settings.put = function(patientId, settings, cb) {
+  tidepool.addOrUpdateSettings(patientId, settings, function(err, payload) {
+    if (err) {
+      return cb(err);
+    }
+
+    return cb(null, settings);
   });
 };
 
@@ -432,7 +630,7 @@ api.team.getMessageThread = function(messageId,cb){
   api.log('GET /message/thread/' + messageId);
 
   tidepool.getMessageThread(messageId, function(error,messages){
-    if(error){
+    if (error){
       return cb(error);
     }
 
@@ -446,14 +644,11 @@ api.team.getMessageThread = function(messageId,cb){
 };
 
 //Get all notes (parent messages) for the given team
-api.team.getNotes = function(userId,cb){
+api.team.getNotes = function(userId, options = {}, cb){
   api.log('GET /message/notes/' + userId);
 
-  //at present we are not using the date range
-  var dateRange = null;
-
-  tidepool.getNotesForUser(userId, dateRange, function(error,messages){
-    if(error){
+  tidepool.getNotesForUser(userId, options, function(error,messages){
+    if (error){
       return cb(error);
     }
 
@@ -469,7 +664,9 @@ api.team.replyToMessageThread = function(message,cb){
     if (error) {
       return cb(error);
     }
-    cb(null, replyId);
+    if (cb) {
+      cb(null, replyId);
+    }
   });
 };
 
@@ -481,7 +678,9 @@ api.team.startMessageThread = function(message,cb){
     if (error) {
       return cb(error);
     }
-    cb(null, messageId);
+    if (cb) {
+      cb(null, messageId);
+    }
   });
 };
 
@@ -492,7 +691,9 @@ api.team.editMessage = function(message,cb){
     if (error) {
       return cb(error);
     }
-    cb(null, null);
+    if (cb) {
+      cb(null, null);
+    }
   });
 };
 
@@ -500,11 +701,11 @@ api.team.editMessage = function(message,cb){
 
 api.patientData = {};
 
-api.patientData.get = function(patientId, cb) {
+api.patientData.get = function(patientId, options, cb) {
   api.log('GET /data/' + patientId);
 
   var now = Date.now();
-  tidepool.getDeviceDataForUser(patientId, function(err, data) {
+  tidepool.getDeviceDataForUser(patientId, options, function (err, data) {
     if (err) {
       return cb(err);
     }
@@ -597,10 +798,10 @@ api.metrics.track = function(eventName, properties, cb) {
 
 api.errors = {};
 
-api.errors.log = function(error, message, properties) {
+api.errors.log = function(error, message, properties, cb) {
   api.log('POST /errors');
 
-  return tidepool.logAppError(error, message, properties);
+  return tidepool.logAppError(error, message, properties, cb);
 };
 
 module.exports = api;

@@ -1,10 +1,10 @@
-/** @jsx React.DOM */
-
 /* global chai */
-window.config = {};
+/* global describe */
+/* global sinon */
+/* global it */
 
 var React = require('react');
-var TestUtils = require('react/lib/ReactTestUtils');
+var TestUtils = require('react-addons-test-utils');
 var expect = chai.expect;
 
 var MessageForm = require('../../../../app/components/messages/messageform');
@@ -19,30 +19,12 @@ describe('MessageForm', function () {
     expect(MessageForm).to.be.a('function');
   });
 
-  describe('render', function() {
-    it('should console.warn when required props are missing', function () {
-      console.warn = sinon.stub();
-      var props = {
-        formFields : {},
-        messagePrompt : '',
-        saveBtnText : '',
-        cancelBtnText : '',
-        onCancel : sinon.stub(),
-        onSubmit : sinon.stub()
-      };
-      var elem = React.createElement(MessageForm, props);
-      var render = TestUtils.renderIntoDocument(elem);
-      expect(console.warn.calledWith('Warning: Required prop `timePrefs` was not specified in `MessageForm`.')).to.equal(true);
-      expect(console.warn.callCount).to.equal(1);
-    });
-  });
-
   describe('getInitialState', function() {
     it('should equal expected initial state', function() {
       var props = {};
       var elem = React.createElement(MessageForm, props);
       var render = TestUtils.renderIntoDocument(elem);
-      var state = render.getInitialState();
+      var state = render.getWrappedInstance().getInitialState();
 
       expect(state.msg).to.equal('');
       expect(state.whenUtc).to.equal(null);

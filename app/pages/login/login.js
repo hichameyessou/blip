@@ -1,4 +1,4 @@
-/** @jsx React.DOM */
+
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -14,30 +14,43 @@
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
 
-var React = require('react');
-var _ = require('lodash');
+import React from 'react';
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
+import { translate } from 'react-i18next';
 
-var config = require('../../config');
+import * as actions from '../../redux/actions';
 
-var LoginNav = require('../../components/loginnav');
-var LoginLogo = require('../../components/loginlogo');
-var SimpleForm = require('../../components/simpleform');
+import { Link } from 'react-router';
+import _ from 'lodash';
 
-var Login = React.createClass({
+import utils from '../../core/utils';
+import { validateForm } from '../../core/validation';
+
+import LoginNav from '../../components/loginnav';
+import LoginLogo from '../../components/loginlogo';
+import SimpleForm from '../../components/simpleform';
+
+export let Login = translate()(React.createClass({
   propTypes: {
+    acknowledgeNotification: React.PropTypes.func.isRequired,
+    confirmSignup: React.PropTypes.func.isRequired,
+    fetchers: React.PropTypes.array.isRequired,
+    isInvite: React.PropTypes.bool.isRequired,
+    notification: React.PropTypes.object,
     onSubmit: React.PropTypes.func.isRequired,
     seedEmail: React.PropTypes.string,
-    isInvite: React.PropTypes.bool,
-    onSubmitSuccess: React.PropTypes.func.isRequired,
-    onSubmitNotAuthorized: React.PropTypes.func.isRequired,
-    trackMetric: React.PropTypes.func.isRequired
+    trackMetric: React.PropTypes.func.isRequired,
+    working: React.PropTypes.bool.isRequired
   },
 
   formInputs: function() {
+    const { t } = this.props;
+
     return [
-      {name: 'username', label: 'Email', type: 'email', disabled: !!this.props.seedEmail},
-      {name: 'password', label: 'Password', type: 'password'},
-      {name: 'remember', label: 'Remember me', type: 'checkbox'}
+      { name: 'username', placeholder: t('Email'), type: 'email', disabled: !!this.props.seedEmail },
+      { name: 'password', placeholder: t('Password'), type: 'password' },
+      { name: 'remember', label: t('Remember me'), type: 'checkbox' }
     ];
   },
 
@@ -50,7 +63,6 @@ var Login = React.createClass({
     }
 
     return {
-      working: false,
       formValues: formValues,
       validationErrors: {},
       notification: null
@@ -59,10 +71,8 @@ var Login = React.createClass({
 
   render: function() {
     var form = this.renderForm();
-    var forgotPassword = this.renderForgotPassword();
     var inviteIntro = this.renderInviteIntroduction();
 
-    /* jshint ignore:start */
     return (
       <div className="login">
         <LoginNav
@@ -74,41 +84,43 @@ var Login = React.createClass({
         <div className="container-small-outer login-form">
           <div className="container-small-inner login-form-box">
             <div className="login-simpleform">{form}</div>
-            <div className="login-forgotpassword">{forgotPassword}</div>
           </div>
         </div>
       </div>
     );
-    /* jshint ignore:end */
   },
 
   renderInviteIntroduction: function() {
+    const { t } = this.props;
     if (!this.props.isInvite) {
       return null;
     }
 
     return (
       <div className='login-inviteIntro'>
-        <p>{'You\'ve been invited to Blip.'}</p><p>{'Log in to view the invitation.'}</p>
+        <p>{t('You\'ve been invited to Tidepool.')}</p><p>{t('Log in to view the invitation.')}</p>
       </div>
     );
   },
 
   renderForm: function() {
-    var submitButtonText = this.state.working ? 'Logging in...' : 'Log in';
+    const { t } = this.props;
 
-    /* jshint ignore:start */
+    var submitButtonText = this.props.working ? t('Logging in...') : t('Login');
+    var forgotPassword = this.renderForgotPassword();
+
     return (
       <SimpleForm
         inputs={this.formInputs()}
         formValues={this.state.formValues}
         validationErrors={this.state.validationErrors}
         submitButtonText={submitButtonText}
-        submitDisabled={this.state.working}
+        submitDisabled={this.props.working}
         onSubmit={this.handleSubmit}
-        notification={this.state.notification}/>
+        notification={this.state.notification || this.props.notification}>
+        {<div className="login-forgotpassword">{forgotPassword}</div>}
+      </SimpleForm>
     );
-    /* jshint ignore:end */
   },
 
   logPasswordReset : function() {
@@ -116,13 +128,14 @@ var Login = React.createClass({
   },
 
   renderForgotPassword: function() {
-    return <a href="#/request-password-reset">{'I forgot my password'}</a>;
+    const { t } = this.props;
+    return <Link to="/request-password-reset">{t('Forgot your password?')}</Link>;
   },
 
   handleSubmit: function(formValues) {
     var self = this;
 
-    if (this.state.working) {
+    if (this.props.working) {
       return;
     }
 
@@ -133,14 +146,14 @@ var Login = React.createClass({
       return;
     }
 
-    formValues = this.prepareFormValuesForSubmit(formValues);
+    const { user, options } = this.prepareFormValuesForSubmit(formValues);
 
-    this.submitFormValues(formValues);
+    this.props.onSubmit(user, options);
   },
 
   resetFormStateBeforeSubmit: function(formValues) {
+    this.props.acknowledgeNotification('loggingIn');
     this.setState({
-      working: true,
       formValues: formValues,
       validationErrors: {},
       notification: null
@@ -148,24 +161,20 @@ var Login = React.createClass({
   },
 
   validateFormValues: function(formValues) {
-    var validationErrors = {};
-    var IS_REQUIRED = 'This field is required.';
+    const { t } = this.props;
+    var form = [
+      { type: 'name', name: 'password', label: t('this field'), value: formValues.password },
+      { type: 'email', name: 'username', label: t('this field'), value: formValues.username },
+    ];
 
-    if (!formValues.username) {
-      validationErrors.username = IS_REQUIRED;
-    }
-
-    if (!formValues.password) {
-      validationErrors.password = IS_REQUIRED;
-    }
+    var validationErrors = validateForm(form);
 
     if (!_.isEmpty(validationErrors)) {
       this.setState({
-        working: false,
         validationErrors: validationErrors,
         notification: {
           type: 'error',
-          message:'Some entries are invalid.'
+          message: t('Some entries are invalid.')
         }
       });
     }
@@ -185,37 +194,63 @@ var Login = React.createClass({
     };
   },
 
-  submitFormValues: function(formValues) {
-    var self = this;
-    var submit = this.props.onSubmit;
-
-    submit(formValues, function(err) {
-      if (err) {
-        //If the user is not yet validated lets get out quick
-        if(err.status === 403){
-          self.props.onSubmitNotAuthorized();
-          return;
-        }
-
-        //Error message for display
-        var message = (err.status === 401) ? 'Wrong username or password.' : 'An error occured while logging in.';
-
-        self.setState({
-          working: false,
-          notification: {
-            type: 'error',
-            message: message
-          }
-        });
-        return;
-      }
-      self.props.onSubmitSuccess();
-      // NOTE: We don't set state `working: false` because it seems to trigger
-      // a re-render of the login page before the redirect in `onSubmitSuccess`
-      // making an unpleasant UI flash. We don't really need it as the login
-      // page will be recreated on next visit to `/login`.
+  doFetching: function(nextProps) {
+    if (!nextProps.fetchers) {
+      return;
+    }
+    nextProps.fetchers.forEach(fetcher => {
+      fetcher();
     });
-  }
-});
+  },
 
-module.exports = Login;
+  /**
+   * Before rendering for first time
+   * begin fetching any required data
+   */
+  componentWillMount: function() {
+    this.doFetching(this.props);
+  }
+}));
+
+/**
+ * Expose "Smart" Component that is connect-ed to Redux
+ */
+
+let getFetchers = (dispatchProps, ownProps, other, api) => {
+  if (other.signupKey) {
+    return [
+      dispatchProps.confirmSignup.bind(null, api, other.signupKey, other.signupEmail)
+    ];
+  }
+
+  return [];
+}
+
+export function mapStateToProps(state) {
+  return {
+    notification: state.blip.working.loggingIn.notification || state.blip.working.confirmingSignup.notification,
+    working: state.blip.working.loggingIn.inProgress,
+  };
+}
+
+let mapDispatchToProps = dispatch => bindActionCreators({
+  onSubmit: actions.async.login,
+  acknowledgeNotification: actions.sync.acknowledgeNotification,
+  confirmSignup: actions.async.confirmSignup
+}, dispatch);
+
+let mergeProps = (stateProps, dispatchProps, ownProps) => {
+  let seedEmail = utils.getInviteEmail(ownProps.location) || utils.getSignupEmail(ownProps.location);
+  let signupKey = utils.getSignupKey(ownProps.location);
+  let isInvite = !_.isEmpty(utils.getInviteEmail(ownProps.location));
+  let api = ownProps.routes[0].api;
+  return Object.assign({}, stateProps, dispatchProps, {
+    fetchers: getFetchers(dispatchProps, ownProps, { signupKey, signupEmail: seedEmail }, api),
+    isInvite: isInvite,
+    seedEmail: seedEmail,
+    trackMetric: ownProps.routes[0].trackMetric,
+    onSubmit: dispatchProps.onSubmit.bind(null, api)
+  });
+};
+
+export default connect(mapStateToProps, mapDispatchToProps, mergeProps)(Login);

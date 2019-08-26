@@ -17,7 +17,7 @@
 // Subnav
 // ====================================
 
-@PatientNew-subnavPadding:  @spacing-small;
+@PatientNew-subnavPadding: @spacing-small;
 
 .PatientNew-subnavInner {
   color: #fff;
@@ -53,7 +53,7 @@
 // Content
 // ====================================
 
-@PatientNew-contentWidth:               340px;
+@PatientNew-contentWidth: 440px;
 
 .PatientNew-contentOuter {
   margin-bottom: @spacing-large;
@@ -67,9 +67,20 @@
 }
 
 .PatientNew-content {
-    margin-left: auto;
-    margin-right: auto;
-    width: @PatientNew-contentWidth;
+  margin-left: auto;
+  margin-right: auto;
+  width: @PatientNew-contentWidth;
+  .input-group:nth-of-type(7) {
+    padding-top: 15px;
+  }
+  .input-group-explanation {
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0px;
+    color: @gray-dark;
+    font-size: 14px;
+    text-align: left;
+  }
 }
 
 // Form

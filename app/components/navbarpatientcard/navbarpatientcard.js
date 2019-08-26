@@ -1,4 +1,4 @@
-/** @jsx React.DOM */
+
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -14,20 +14,30 @@
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
 
-var React = require('react');
-var _ = require('lodash');
-var cx = require('react/lib/cx');
+import React from 'react';
+import { translate } from 'react-i18next';
+import { Link } from 'react-router';
+import _ from 'lodash';
+import cx from 'classnames';
+var launchCustomProtocol = require('custom-protocol-detection');
+var UploadLaunchOverlay = require('../uploadlaunchoverlay');
 
 var personUtils = require('../../core/personutils');
-var utils = require('../../core/utils');
 
-var NavbarPatientCard = React.createClass({
+var NavbarPatientCard = translate()(React.createClass({
   propTypes: {
-    href: React.PropTypes.string,
+    href: React.PropTypes.string.isRequired,
     currentPage: React.PropTypes.string,
     uploadUrl: React.PropTypes.string,
     patient: React.PropTypes.object,
-    trackMetric: React.PropTypes.func.isRequired
+    trackMetric: React.PropTypes.func.isRequired,
+    permsOfLoggedInUser: React.PropTypes.object,
+  },
+
+  getInitialState: function() {
+    return {
+      showUploadOverlay: false,
+    };
   },
 
   render: function() {
@@ -35,15 +45,15 @@ var NavbarPatientCard = React.createClass({
     var self = this;
 
     var classes = cx({
-      'patientcard': true
+      'patientcard': true,
     });
 
     var view = this.renderView(patient);
     var upload = this.renderUpload(patient);
     var share = this.renderShare(patient);
     var profile = this.renderProfile(patient);
+    var overlay = this.state.showUploadOverlay ? this.renderOverlay() : null;
 
-    /* jshint ignore:start */
     return (
       <div className={classes}>
         <i className="Navbar-icon icon-face-standin"></i>
@@ -56,15 +66,16 @@ var NavbarPatientCard = React.createClass({
           </div>
         </div>
         <div className="clear"></div>
+        {overlay}
       </div>
     );
-    /* jshint ignore:end */
   },
 
   renderView: function() {
+    const { t } = this.props;
     var classes = cx({
       'patientcard-actions-view': true,
-      'patientcard-actions--highlight': this.props.currentPage && this.props.currentPage.match(/(data)$/i)
+      'patientcard-actions--highlight': this.props.currentPage && this.props.currentPage.match(/(data)$/i),
     });
 
     var self = this;
@@ -73,13 +84,12 @@ var NavbarPatientCard = React.createClass({
     };
 
     return (
-      /* jshint ignore:start */
-      <a className={classes} onClick={handleClick} href={this.props.href}>View</a>
-      /* jshint ignore:end */
+      <Link className={classes} onClick={handleClick} to={this.props.href}>{t('View')}</Link>
     );
   },
 
   renderProfile: function(patient) {
+    const { t } = this.props;
     var url = '';
     if (!_.isEmpty(patient.link)) {
       url = patient.link.slice(0,-5) + '/profile';
@@ -88,7 +98,7 @@ var NavbarPatientCard = React.createClass({
     var classes = cx({
       'patientcard-actions-profile': true,
       'navbarpatientcard-profile': true,
-      'patientcard-actions--highlight': this.props.currentPage && this.props.currentPage.match(/(profile)$/i)
+      'patientcard-actions--highlight': this.props.currentPage && this.props.currentPage.match(/(profile)$/i),
     });
 
     var self = this;
@@ -97,36 +107,35 @@ var NavbarPatientCard = React.createClass({
     };
 
     return (
-      /* jshint ignore:start */
-      <a className={classes} href={url} onClick={handleClick} title="Profile">
+      <Link className={classes} to={url} onClick={handleClick} title={t('Profile')}>
         <div className="patientcard-fullname" title={this.getFullName()}>
           {this.getFullName()}
           <i className="patientcard-icon icon-settings"></i>
         </div>
-      </a>
-      /* jshint ignore:end */
+      </Link>
     );
   },
 
   renderUpload: function(patient) {
+    const { t } = this.props;
     var classes = cx({
-      'patientcard-actions-upload': true
+      'patientcard-actions-upload': true,
     });
 
     var self = this;
     var handleClick = function(e) {
       if (e) {
         e.preventDefault();
+        e.stopPropagation();
       }
-      window.open(self.props.uploadUrl, '_blank');
+      self.setState({showUploadOverlay: true});
+      launchCustomProtocol('tidepoolupload://open');
       self.props.trackMetric('Clicked Navbar Upload Data');
     };
 
-    if(_.isEmpty(patient.permissions) === false && patient.permissions.root) {
+    if(_.isEmpty(patient.permissions) === false && patient.permissions.root || _.has(this.props.permsOfLoggedInUser, 'upload') ) {
       return (
-        /* jshint ignore:start */
-        <a href="" onClick={handleClick} className={classes} title="Upload data">Upload</a>
-        /* jshint ignore:end */
+        <a href="" onClick={handleClick} className={classes} title={t('Upload data')}>{t('Upload')}</a>
       );
     }
 
@@ -134,6 +143,8 @@ var NavbarPatientCard = React.createClass({
   },
 
   renderShare: function(patient) {
+    const { t } = this.props;
+
     var shareUrl = '';
     if (!_.isEmpty(patient.link)) {
       shareUrl = patient.link.slice(0,-5) + '/share';
@@ -141,7 +152,7 @@ var NavbarPatientCard = React.createClass({
 
     var classes = cx({
       'patientcard-actions-share': true,
-      'patientcard-actions--highlight': this.props.currentPage && this.props.currentPage.match(/(share)$/i)
+      'patientcard-actions--highlight': this.props.currentPage && this.props.currentPage.match(/(share)$/i),
     });
 
     var self = this;
@@ -151,18 +162,20 @@ var NavbarPatientCard = React.createClass({
 
     if(_.isEmpty(patient.permissions) === false && patient.permissions.root) {
       return (
-        /* jshint ignore:start */
-        <a className={classes} onClick={handleClick} href={shareUrl} title="Share data">Share</a>
-        /* jshint ignore:end */
+        <Link className={classes} onClick={handleClick} to={shareUrl} title={t('Share data')}>{t('Share')}</Link>
       );
     }
 
     return null;
   },
 
+  renderOverlay: function() {
+    return <UploadLaunchOverlay modalDismissHandler={()=>{this.setState({showUploadOverlay: false})}}/>
+  },
+
   getFullName: function() {
     return personUtils.patientFullName(this.props.patient);
-  }
-});
+  },
+}));
 
 module.exports = NavbarPatientCard;

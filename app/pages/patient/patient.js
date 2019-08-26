@@ -1,4 +1,4 @@
-/** @jsx React.DOM */
+
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -14,28 +14,54 @@
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
 
-var React = require('react');
-var _ = require('lodash');
+import React from 'react';
+import { connect } from 'react-redux';
+import { translate, Trans } from 'react-i18next';
+import { bindActionCreators } from 'redux';
 
-var personUtils = require('../../core/personutils');
-var ModalOverlay = require('../../components/modaloverlay');
-var PatientInfo = require('./patientinfo');
-var PatientTeam = require('./patientteam');
+import * as actions from '../../redux/actions';
 
-var Patient = React.createClass({
+import _ from 'lodash';
+
+import personUtils from '../../core/personutils';
+import ModalOverlay from '../../components/modaloverlay';
+import PatientInfo from './patientinfo';
+import { PatientTeam } from './patientteam';
+
+const Patient = translate()(React.createClass({
+  // many things *not* required here because they aren't needed for
+  // /patients/:id/profile although they are for /patients/:id/share (or vice-versa)
   propTypes: {
-    user: React.PropTypes.object,
-    shareOnly: React.PropTypes.bool,
-    fetchingUser: React.PropTypes.bool,
-    patient: React.PropTypes.object,
-    fetchingPatient: React.PropTypes.bool,
-    onUpdatePatient: React.PropTypes.func,
-    pendingInvites: React.PropTypes.array,
-    onChangeMemberPermissions: React.PropTypes.func,
-    onRemoveMember: React.PropTypes.func,
-    onInviteMember: React.PropTypes.func,
+    acknowledgeNotification: React.PropTypes.func.isRequired,
+    cancellingInvite: React.PropTypes.bool,
+    dataDonationAccounts: React.PropTypes.array,
+    changingMemberPermissions: React.PropTypes.bool,
+    fetchers: React.PropTypes.array.isRequired,
+    fetchingPatient: React.PropTypes.bool.isRequired,
+    fetchingUser: React.PropTypes.bool.isRequired,
+    invitingMemberInfo: React.PropTypes.object,
     onCancelInvite: React.PropTypes.func,
-    trackMetric: React.PropTypes.func.isRequired
+    onChangeMemberPermissions: React.PropTypes.func,
+    onInviteMember: React.PropTypes.func,
+    onRemoveMember: React.PropTypes.func,
+    onUpdateDataDonationAccounts: React.PropTypes.func,
+    onUpdatePatient: React.PropTypes.func,
+    onUpdatePatientSettings: React.PropTypes.func,
+    patient: React.PropTypes.object,
+    pendingSentInvites: React.PropTypes.array,
+    removingMember: React.PropTypes.bool,
+    shareOnly: React.PropTypes.bool,
+    trackMetric: React.PropTypes.func.isRequired,
+    updatingDataDonationAccounts: React.PropTypes.bool,
+    updatingPatientBgUnits: React.PropTypes.bool,
+    user: React.PropTypes.object,
+    dataSources: React.PropTypes.array,
+    fetchDataSources: React.PropTypes.func,
+    connectDataSource: React.PropTypes.func,
+    disconnectDataSource: React.PropTypes.func,
+    authorizedDataSource: React.PropTypes.object,
+    queryParams: React.PropTypes.object,
+    api: React.PropTypes.object,
   },
 
   getInitialState: function() {
@@ -92,11 +118,24 @@ var Patient = React.createClass({
     return (
       <div className="PatientPage-infoSection">
         <PatientInfo
+          api={this.props.api}
           user={this.props.user}
           fetchingUser={this.props.fetchingUser}
           patient={this.props.patient}
           fetchingPatient={this.props.fetchingPatient}
           onUpdatePatient={this.props.onUpdatePatient}
+          onUpdatePatientSettings={this.props.onUpdatePatientSettings}
+          onUpdateDataDonationAccounts={this.props.onUpdateDataDonationAccounts}
+          permsOfLoggedInUser={this.props.permsOfLoggedInUser}
+          dataDonationAccounts={this.props.dataDonationAccounts || []}
+          updatingDataDonationAccounts={this.props.updatingDataDonationAccounts}
+          updatingPatientBgUnits={this.props.updatingPatientBgUnits}
+          dataSources={this.props.dataSources}
+          fetchDataSources={this.props.fetchDataSources}
+          connectDataSource={this.props.connectDataSource}
+          disconnectDataSource={this.props.disconnectDataSource}
+          authorizedDataSource={this.props.authorizedDataSource}
+          queryParams={this.props.queryParams}
           trackMetric={this.props.trackMetric} />
       </div>
     );
@@ -108,11 +147,12 @@ var Patient = React.createClass({
 
   renderDeleteDialog: function() {
     return (
-      <div>If you are sure you want to delete your account, <a href="mailto:support@tidepool.org?Subject=Delete%20my%20account" target="_blank">send an email</a> to support@tidepool.org and we take care of it for you.</div>
+      <Trans i18nKey="html.patient-delete-account">If you are sure you want to delete your account, <a href="mailto:support@tidepool.org?Subject=Delete%20my%20account" target="_blank">send an email</a> to support@tidepool.org and we take care of it for you.</Trans>
     );
   },
 
   renderDelete: function() {
+    const { t } = this.props;
     var self = this;
 
     if (!this.isSamePersonUserAndPatient()) {
@@ -128,22 +168,22 @@ var Patient = React.createClass({
 
     return (
       <div className="PatientPage-deleteSection">
-        <div onClick={handleClick}>Delete my account</div>
+        <div onClick={handleClick}>{t('Delete my account')}</div>
       </div>
     );
   },
+
   overlayClickHandler: function() {
     this.setState(this.getInitialState());
   },
+
   renderModalOverlay: function() {
-    /* jshint ignore:start */
     return (
       <ModalOverlay
         show={this.state.showModalOverlay}
         dialog={this.state.dialog}
         overlayClickHandler={this.overlayClickHandler}/>
     );
-    /* jshint ignore:end */
   },
 
   renderAccess: function() {
@@ -160,9 +200,51 @@ var Patient = React.createClass({
 
   renderPatientTeam: function() {
     return (
-      <PatientTeam {...this.props} />
+      <PatientTeam
+        acknowledgeNotification={this.props.acknowledgeNotification}
+        cancellingInvite={this.props.cancellingInvite}
+        changingMemberPermissions={this.props.changingMemberPermissions}
+        invitingMemberInfo={this.props.invitingMemberInfo}
+        onCancelInvite={this.props.onCancelInvite}
+        onChangeMemberPermissions={this.props.onChangeMemberPermissions}
+        onInviteMember={this.props.onInviteMember}
+        onRemoveMember={this.props.onRemoveMember}
+        patient={this.props.patient}
+        pendingSentInvites={this.props.pendingSentInvites}
+        removingMember={this.props.removingMember}
+        trackMetric={this.props.trackMetric}
+        user={this.props.user}
+      />
     );
   },
-});
 
-module.exports = Patient;
+  componentDidMount: function() {
+    if (this.props.trackMetric) {
+      if (this.props.shareOnly) {
+        this.props.trackMetric('Viewed Share');
+      } else {
+        this.props.trackMetric('Viewed Profile')
+      }
+    }
+  },
+
+  doFetching: function(nextProps) {
+    if (!nextProps.fetchers) {
+      return
+    }
+
+    nextProps.fetchers.forEach(fetcher => {
+      fetcher();
+    });
+  },
+
+  /**
+   * Before rendering for first time
+   * begin fetching any required data
+   */
+  componentWillMount: function() {
+    this.doFetching(this.props);
+  }
+}));
+
+export default Patient;

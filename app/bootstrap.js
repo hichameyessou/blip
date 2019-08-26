@@ -1,4 +1,3 @@
-/** @jsx React.DOM */
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -10,52 +9,56 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the License for more details.
  *
- * You should have received a copy of the License along with this program; if
+ * You should have received a copy of the License along with appContext program; if
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
-'use strict';
 
-var React = require('react');
-var bows = require('bows');
-var _ = require('lodash');
+import React from 'react';
+import { render } from 'react-dom';
+import bows from 'bows';
+import _ from 'lodash';
 
-var config = require('./config');
-var router = require('./router');
-var api = require('./core/api');
-var personUtils = require('./core/personutils');
-var queryString = require('./core/querystring');
-var detectTouchScreen = require('./core/notouch');
+import './core/language'; // Set the language before loading components
+import blipCreateStore from './redux/store';
 
-var AppComponent = require('./components/app');
+import { getRoutes } from './routes';
+
+import config from './config';
+import api from './core/api';
+import personUtils from './core/personutils';
+import detectTouchScreen from './core/notouch';
+
+/* global __DEV_TOOLS__ */
 
 // For React developer tools
 window.React = React;
 
-// Push state to be able to always go back in browser history within the appContext
-var path = window.location.hash;
-window.history.pushState(null, null, '#/patients');
-window.history.pushState(null, null, path);
-
-var appContext = {
-  log: bows('App'),
+export let appContext = {
+  log: __DEV_TOOLS__ ? bows('App') : _.noop,
   api: api,
   personUtils: personUtils,
-  router: router,
-  DEBUG: !!(window.localStorage && window.localStorage.debug)
+  DEBUG: !!(window.localStorage && window.localStorage.debug),
+  config: config
 };
 
+// This anonymous function must remain in ES5 format because
+// the argument parameter used is not bound when using arrow functions
+// See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions
 appContext.trackMetric = function() {
-  var args = Array.prototype.slice.call(arguments);
+  const args = Array.prototype.slice.call(arguments);
   return appContext.api.metrics.track.apply(appContext.api.metrics, args);
 };
 
-appContext.useMock = function(mock) {
-  this.mock = mock;
-  this.api = mock.patchApi(this.api);
+appContext.props = {
+  log: appContext.log,
+  api: appContext.api,
+  personUtils: appContext.personUtils,
+  trackMetric: appContext.trackMetric,
+  DEBUG: appContext.DEBUG,
+  config: appContext.config
 };
 
-appContext.init = function(callback) {
-  var self = this;
+appContext.init = callback => {
 
   function beginInit() {
     initNoTouch();
@@ -63,53 +66,23 @@ appContext.init = function(callback) {
 
   function initNoTouch() {
     detectTouchScreen();
-    initMock();
-  }
-
-  function initMock() {
-    if (self.mock) {
-      // Load mock params from config variables
-      // and URL query string (before hash)
-      var paramsConfig = queryString.parseTypes(config.MOCK_PARAMS);
-      var paramsUrl = queryString.parseTypes(window.location.search);
-      var params = _.assign(paramsConfig, paramsUrl);
-
-      self.mock.init(params);
-      self.log('Mock services initialized with params', params);
-    }
     initApi();
   }
 
   function initApi() {
-    self.api.init(callback);
+    appContext.api.init(callback);
   }
 
   beginInit();
 };
 
-var Bootstrap = React.createClass({
-  childContextTypes: {
-    log: React.PropTypes.func.isRequired,
-    api: React.PropTypes.object.isRequired,
-    router: React.PropTypes.object.isRequired,
-    personUtils: React.PropTypes.object.isRequired,
-    trackMetric: React.PropTypes.func.isRequired,
-    DEBUG: React.PropTypes.bool.isRequired
-  },
-  getChildContext: function() {
-    return {
-      log: appContext.log,
-      api: appContext.api,
-      router: appContext.router,
-      personUtils: appContext.personUtils,
-      trackMetric: appContext.trackMetric,
-      DEBUG: appContext.DEBUG
-    };
-  },
-  render: function() {
-    return <AppComponent />;
-  }
-});
+appContext.render = Component => {
+  render(
+    <Component store={appContext.store} routing={appContext.routing} />,
+    document.getElementById('app'),
+  );
+};
+
 
 /**
  * Application start function. This is what should be called
@@ -118,26 +91,19 @@ var Bootstrap = React.createClass({
  * This renders the AppComponent into the DOM providing appContext
  * as the context for AppComponent so that the required dependencies
  * are passed in!
- * 
+ *
  */
-appContext.start = function() {
-  var self = this;
+appContext.start = (Component) => {
+  appContext.init(() => {
+    appContext.log('Starting app...');
 
-  this.init(function() {
-    self.log('Starting app...');
-    self.component = React.render(
-      /* jshint ignore:start */
-      <Bootstrap />,
-      /* jshint ignore:end */
-      document.getElementById('app')
-    );
+    appContext.store = blipCreateStore(appContext.api);
+    appContext.routing = getRoutes(appContext, appContext.store);
 
-    self.log('App started');
+    appContext.render(Component)
 
-    if (self.mock) {
-      self.log('App running with mock services');
-    }
+    appContext.log('App started');
   });
 };
 
-module.exports = appContext;
+export default appContext;

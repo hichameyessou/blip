@@ -1,13 +1,17 @@
-/** @jsx React.DOM */
-
 /* global chai */
-window.config = {};
+/* global describe */
+/* global sinon */
+/* global it */
 
-var React = require('react');
-var TestUtils = require('react/lib/ReactTestUtils');
-var expect = chai.expect;
+import React from'react';
+import TestUtils from'react-addons-test-utils';
+import mutationTracker from 'object-invariant-test-helper';
 
-var Login = require('../../../app/pages/login');
+import { Login } from'../../../app/pages/login/login.js';
+import { mapStateToProps } from'../../../app/pages/login/login.js';
+
+let assert = chai.assert;
+let expect = chai.expect;
 
 describe('Login', function () {
   it('should be exposed as a module and be of type function', function() {
@@ -15,28 +19,79 @@ describe('Login', function () {
   });
 
   describe('render', function() {
-    it('should console.warn when required props are missing', function () {
-      console.warn = sinon.stub();
-      var elem = TestUtils.renderIntoDocument(<Login />);
-      expect(console.warn.callCount).to.equal(5);
-      expect(console.warn.calledWith('Warning: Required prop `onSubmit` was not specified in `Login`.')).to.equal(true);
-      expect(console.warn.calledWith('Warning: Required prop `onSubmitSuccess` was not specified in `Login`.')).to.equal(true);
-      expect(console.warn.calledWith('Warning: Required prop `onSubmitNotAuthorized` was not specified in `Login`.')).to.equal(true);
-      expect(console.warn.calledWith('Warning: Required prop `trackMetric` was not specified in `Login`.')).to.equal(true);
-      expect(console.warn.calledWith('Warning: Required prop `trackMetric` was not specified in `LoginNav`. Check the render method of `Login`.')).to.equal(true);
-    });
-
     it('should render without problems when required props are present', function () {
-      console.warn = sinon.stub();
+      console.error = sinon.stub();
       var props = {
-        trackMetric: sinon.stub(),
+        acknowledgeNotification: sinon.stub(),
+        confirmSignup: sinon.stub(),
+        fetchers: [],
+        isInvite: false,
         onSubmit: sinon.stub(),
-        onSubmitSuccess: sinon.stub(),
-        onSubmitNotAuthorized: sinon.stub(),
+        trackMetric: sinon.stub(),
+        working: false
       };
       var elem = React.createElement(Login, props);
       var render = TestUtils.renderIntoDocument(elem);
-      expect(console.warn.callCount).to.equal(0);
+      expect(console.error.callCount).to.equal(0);
+    });
+  });
+
+  describe('mapStateToProps', () => {
+    const state = {
+      working: {
+        confirmingSignup: {inProgress: false, notification: null},
+        loggingIn: {inProgress: false, notification: {type: 'alert', message: 'Hi!'}}
+      }
+    };
+
+    const tracked = mutationTracker.trackObj(state);
+    const result = mapStateToProps({blip: state});
+
+    it('should not mutate the state', () => {
+      expect(mutationTracker.hasMutated(tracked)).to.be.false;
+    });
+
+    it('should be a function', () => {
+      assert.isFunction(mapStateToProps);
+    });
+
+    it('should map working.loggingIn.inProgress to working', () => {
+      expect(result.working).to.equal(state.working.loggingIn.inProgress);
+    });
+
+    it('should map working.loggingIn.notification to notification', () => {
+      expect(result.notification).to.equal(state.working.loggingIn.notification);
+    });
+
+    it('should map working.confirmingSignup.notification to notification if working.loggingIn.notification is null', () => {
+      const anotherState = {
+        working: {
+          loggingIn: {inProgress: false, notification: null},
+          confirmingSignup: {inProgress: false, notification: {status: 500, body: 'Error :('}}
+        }
+      };
+      const anotherRes = mapStateToProps({blip: anotherState});
+      expect(anotherRes.notification).to.equal(anotherState.working.confirmingSignup.notification);
+    });
+
+    describe('when some state is `null`', () => {
+      const state = {
+        working: {
+          confirmingSignup: {inProgress: false, notification: null},
+          loggingIn: {inProgress: false, notification: null}
+        }
+      };
+
+      const tracked = mutationTracker.trackObj(state);
+      const result = mapStateToProps({blip: state});
+
+      it('should not mutate the state', () => {
+        expect(mutationTracker.hasMutated(tracked)).to.be.false;
+      });
+
+      it('should map working.loggingIn.notification to notification', () => {
+        expect(result.notification).to.be.null;
+      });
     });
   });
 });

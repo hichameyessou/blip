@@ -1,4 +1,4 @@
-/** @jsx React.DOM */
+
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -15,7 +15,7 @@
  */
 
 var React = require('react');
-var cx = require('react/lib/cx');
+var cx = require('classnames');
 
 var ModalOverlay = React.createClass({
   propTypes: {
@@ -30,7 +30,7 @@ var ModalOverlay = React.createClass({
       'ModalOverlay--show': this.props.show
     });
 
-    /* jshint ignore:start */
+    
     return (
       <div className={classes}>
         <div className="ModalOverlay-target" onClick={this.props.overlayClickHandler}></div>
@@ -39,7 +39,7 @@ var ModalOverlay = React.createClass({
         </div>
       </div>
     );
-    /* jshint ignore:end */
+    
   }
 });
 

@@ -13,8 +13,6 @@
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
 
-@patients-box-max-width: 680px;
-
 .patients,
 .patients-welcome {
   margin-right: auto;
@@ -49,9 +47,41 @@
 }
 
 .patients-section-content {
-  width: 700px;
+  width: 100%;
+  max-width: 880px;
   margin: 0 auto;
   padding-bottom: @spacing-base;
+
+  .people-list {
+    display: grid;
+    grid-gap: 20px;
+    grid-template-columns: repeat(1, 1fr);
+    justify-items: center;
+
+    @media (min-width: @screen-md-lg-min) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (min-width: @screen-lg-min) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}
+
+.patients-vca-section-content {
+  padding-top: @spacing-large;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding-bottom: @spacing-base;
+
+  .ModalOverlay-target {
+    z-index: 101;
+  }
+
+  .ModalOverlay-dialog {
+    z-index: 102;
+  }
 }
 
 .patients-new-account {

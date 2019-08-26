@@ -29,9 +29,29 @@ label,
 // Form controls
 // ====================================
 
-@form-control-border-size:   2px;
-@form-control-border-color:  @gray-light;
+@form-control-border-size:   1px;
+@form-control-border-color:  @gray-dark;
 @form-control-height:        (2*@line-height-base);
+
+.form-control-border {
+  border: @form-control-border-size solid fade(@form-control-border-color, 50%);
+  border-radius: 0px;
+
+  &:hover {
+    border-color: @purple;
+  }
+
+  &:focus {
+    // Disable default WebKit focus style
+    outline: 0;
+    border-color: @purple;
+  }
+
+  &:disabled {
+    border-color: fade(@form-control-border-color, 70%);
+    cursor: not-allowed;
+  }
+}
 
 .form-control {
   display: block;
@@ -53,14 +73,14 @@ label,
   -webkit-appearance: none;
 
   &:hover {
-    border-color: darken(@form-control-border-color, 15%);
+    border-color: @purple;
   }
 
   &:focus {
     // Disable default WebKit focus style
     outline: 0;
 
-    border-color: @blue-green;
+    border-color: @purple;
   }
 
   &:disabled {
@@ -71,6 +91,10 @@ label,
   // Reset height for `textarea`s
   textarea& {
     height: auto;
+  }
+
+  &::placeholder {
+    font-size: @font-size-small;
   }
 }
 
@@ -98,5 +122,8 @@ input[type="checkbox"] {
 // Designed to help with the organization and spacing of vertical forms.
 
 .form-group {
-  margin-bottom: @spacing-small;
+  margin-bottom: @spacing-medium;
+  @media(max-width: @screen-md-max) {
+    min-width: 275px;
+  }
 }

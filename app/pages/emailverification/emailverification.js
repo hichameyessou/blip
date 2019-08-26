@@ -1,4 +1,3 @@
-/** @jsx React.DOM */
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -14,63 +13,83 @@
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
 
-var React = require('react');
-var _ = require('lodash');
+import React from 'react';
+import { connect } from 'react-redux';
+import { translate, Trans } from 'react-i18next';
+import { bindActionCreators } from 'redux';
+import _ from 'lodash';
 
-var LoginNav = require('../../components/loginnav');
-var LoginLogo = require('../../components/loginlogo');
-var SimpleForm = require('../../components/simpleform');
+import * as actions from '../../redux/actions';
 
-var utils = require('../../core/utils');
+import LoginNav from '../../components/loginnav';
+import LoginLogo from '../../components/loginlogo';
+import SimpleForm from '../../components/simpleform';
 
-var EmailVerification = React.createClass({
+import utils from '../../core/utils';
+
+export var EmailVerification = translate()(React.createClass({
   propTypes: {
-    sent: React.PropTypes.bool,
+    acknowledgeNotification: React.PropTypes.func.isRequired,
+    notification: React.PropTypes.object,
     onSubmitResend: React.PropTypes.func.isRequired,
-    trackMetric: React.PropTypes.func.isRequired
+    resent: React.PropTypes.bool.isRequired,
+    sent: React.PropTypes.oneOfType([
+      React.PropTypes.bool,
+      React.PropTypes.string,
+    ]),
+    trackMetric: React.PropTypes.func.isRequired,
+    working: React.PropTypes.bool.isRequired
+  },
+  componentWillUnmount: function() {
+    this.props.acknowledgeNotification('resendingEmailVerification');
   },
   formInputs: function() {
+    const { t } = this.props;
     return [
-      {name: 'email', label: 'Email', type: 'email'}
+      {name: 'email', label: t('Email'), type: 'email'}
     ];
   },
   getInitialState: function() {
     return {
-      working: false,
-      success: false,
       formValues: {},
-      validationErrors: {},
-      notification: null
+      validationErrors: {}
     };
   },
   render: function() {
+    const { t, sent } = this.props;
     var content;
     var loginPage;
 
     if (this.props.sent) {
       loginPage = 'signup';
       content = (
-        <div className="EmailVerification-intro">
-          <div className="EmailVerification-title">{'Keeping your data private and secure is important to us!'}</div>
+        <Trans className="EmailVerification-intro" i18nKey="html.emailverification-instructions">
+          <div className="EmailVerification-title">Keeping your data private and secure is important to us!</div>
           <div className="EmailVerification-instructions">
-            <p>{'We just sent you an email. To verify we have the right email address, please click the link in the email to activate your account.'}</p>
+            <p>
+              Please click the link in the email we just sent you at
+              <br/>
+                <strong>{{sent}}</strong>
+              <br/>
+              to verify and activate your account.
+            </p>
           </div>
-        </div>
+        </Trans>
       );
     }
     else {
       loginPage = 'login';
       content = (
-        <div>
+        <div className="EmailVerification-content">
           <div className="EmailVerification-intro">
-            <div className="EmailVerification-title">{'Hey, you\'re not verified yet.'}</div>
+            <div className="EmailVerification-title">{t('Hey, you\'re not verified yet.')}</div>
               <div className="EmailVerification-instructions">
-                <p>{'Check your email and follow the link there. (We need to confirm that you are really you.)'}</p>
+                <p>{t('Check your email and follow the link there. (We need to confirm that you are really you.)')}</p>
               </div>
           </div>
-          <div className="container-small-outer login-form">
+          <div className="container-small-outer">
             <div className="EmailVerification-resend-note">
-              <p>{'Do you want us to resend the email? Enter the address you used to signup below.'}</p>
+              <p>{t('Do you want us to resend the email? Enter the address you used to signup below.')}</p>
             </div>
             <div className="container-small-inner login-form-box">
               <div className="EmailVerification-form">{this.renderForm()}</div>
@@ -92,7 +111,8 @@ var EmailVerification = React.createClass({
     );
   },
   renderForm: function() {
-    var submitButtonText = this.state.working ? 'Sending email...' : 'Resend';
+    const { t } = this.props;
+    var submitButtonText = this.props.working ? t('Sending email...') : t('Resend');
 
     return (
       <SimpleForm
@@ -100,15 +120,15 @@ var EmailVerification = React.createClass({
         formValues={this.state.formValues}
         validationErrors={this.state.validationErrors}
         submitButtonText={submitButtonText}
-        submitDisabled={this.state.working}
+        submitDisabled={this.props.working}
         onSubmit={this.handleSubmit}
-        notification={this.state.notification}/>
+        notification={this.props.notification}/>
     );
   },
   handleSubmit: function(formValues) {
     var self = this;
 
-    if (this.state.working) {
+    if (this.props.working) {
       return;
     }
 
@@ -118,21 +138,20 @@ var EmailVerification = React.createClass({
     if (!_.isEmpty(validationErrors)) {
       return;
     }
-
-    this.submitFormValues(formValues);
+    this.props.onSubmitResend(formValues.email);
   },
   resetFormStateBeforeSubmit: function(formValues) {
+    this.props.acknowledgeNotification('resendingEmailVerification');
     this.setState({
-      working: true,
       formValues: formValues,
-      validationErrors: {},
-      notification: null
+      validationErrors: {}
     });
   },
   validateFormValues: function(formValues) {
+    const { t } = this.props;
     var validationErrors = {};
-    var IS_REQUIRED = 'This field is required.';
-    var INVALID_EMAIL = 'Invalid email address.';
+    var IS_REQUIRED = t('This field is required.');
+    var INVALID_EMAIL = t('Invalid email address.');
 
     if (!formValues.email) {
       validationErrors.email = IS_REQUIRED;
@@ -144,39 +163,39 @@ var EmailVerification = React.createClass({
 
     if (!_.isEmpty(validationErrors)) {
       this.setState({
-        working: false,
         validationErrors: validationErrors
       });
     }
 
     return validationErrors;
-  },
-  submitFormValues: function(formValues) {
-    var self = this;
-    var submit = this.props.onSubmitResend;
-
-    submit(formValues.email, function(err) {
-      if (err) {
-
-        return self.setState({
-          working: false,
-          notification: {
-            type: 'error',
-            message: 'An error occured while trying to resend your verification email.'
-          }
-        });
-      }
-
-      self.setState({
-        working: false,
-        success: true,
-        notification: {
-            type: 'alert',
-            message: 'We just sent you an email.'
-          }
-      });
-    });
   }
-});
+}));
 
-module.exports = EmailVerification;
+/**
+ * Expose "Smart" Component that is connect-ed to Redux
+ */
+
+export function mapStateToProps(state) {
+  return {
+    notification: state.blip.working.resendingEmailVerification.notification,
+    working: state.blip.working.resendingEmailVerification.inProgress,
+    resent: state.blip.resentEmailVerification,
+    sent: state.blip.sentEmailVerification
+  };
+}
+
+let mapDispatchToProps = dispatch => bindActionCreators({
+  submitResend: actions.async.resendEmailVerification,
+  acknowledgeNotification: actions.sync.acknowledgeNotification
+}, dispatch);
+
+let mergeProps = (stateProps, dispatchProps, ownProps) => {
+  var api = ownProps.routes[0].api;
+  return Object.assign({}, stateProps, _.omit(dispatchProps, 'submitResend'), {
+    onSubmitResend: dispatchProps.submitResend.bind(null, api),
+    trackMetric: ownProps.routes[0].trackMetric
+  });
+};
+
+export default connect(mapStateToProps, mapDispatchToProps, mergeProps)(EmailVerification);
+

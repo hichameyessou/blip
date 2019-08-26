@@ -39,7 +39,6 @@ body {
   line-height: @line-height-base;
   color: @text-color;
   background-color: @body-bg;
-  user-select: none;
 }
 
 // Make form elements use body font styles
@@ -81,6 +80,19 @@ a.link-secondary {
   &:focus {
     color: @blue-green-light;
     text-decoration: underline;
+  }
+}
+
+.link-textBlock,
+a.link-textBlock {
+  color: @purple;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover,
+  &:focus {
+    color: @purple-dark;
+    text-decoration: none;
   }
 }
 

@@ -13,26 +13,156 @@
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
 
-.signup-form {
-  margin-bottom: @spacing-large;
+.signup {
+  .flex-layout-for-logged-out-routes(575px, 650px);
 }
 
-.signup-form-box {
+.signup-container {
+  align-self: center;
   padding-top: @spacing-base;
-  padding-bottom: @spacing-base;
+  display: flex;
+  flex-direction: column;
+}
+
+.signup-formIntro {
+  width: 300px;
+  margin: 0 auto;
+
+  padding-top: @spacing-base;
 
   @media(min-width: @screen-md-min) {
     padding-top: @spacing-large;
-    padding-bottom: @spacing-large;
+  }
+}
+
+.signup-form-box {
+  padding-top: @spacing-small;
+  padding-bottom: @spacing-base;
+
+  a {
+    &:extend(.link-textBlock all);
+  }
+
+  .form-group:last-child {
+    margin-bottom: 38px;
+  }
+
+  .input-group-checkbox-label {
+    padding-left: 40px;
+    margin-top: 10px;
+    margin-bottom: -15px;
+
+    input {
+      margin-left: -30px;
+    }
+  }
+
+  .simple-form-action-group {
+    margin-bottom: 24px;
+
+    button {
+      width: 100%;
+    }
+  }
+}
+
+.signup-formTypeSwitch {
+  font-size: 14px;
+
+  a {
+    &:extend(.link-textBlock all);
   }
 }
 
 .signup-inviteIntro {
   width: 450px;
-  margin: 0 auto;
+  margin: 60px auto 0;
   text-align: center;
 
   > p {
     margin: 5px 0;
+  }
+}
+
+.signup-title {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  color: @purple-dark;
+  margin-bottom: 15px;
+}
+
+.signup-title-condensed {
+  &:extend(.signup-title all);
+  margin-bottom: 5px;
+}
+
+.signup-subtitle {
+  font-size: 20px;
+  text-align: center;
+  color: @purple-dark;
+  margin-bottom: 25px;
+  line-height: 1.4;
+}
+
+.signup-selection {
+  padding: 15px;
+  border-radius: 4px;
+  border: solid 1px #979797;
+  margin-bottom: 20px;
+
+  @media(max-width: @screen-lg-min) {
+    margin-left: @spacing-base;
+    margin-right: @spacing-base;
+  }
+}
+
+.signup-selection:hover {
+  background-color: white;
+  border-color: #6078ff;
+  cursor: pointer;
+}
+
+.signup-selection.selected {
+  background-color: white;
+  border-color: #6078ff;
+  .signup-selectionCheck {
+    display: block;
+  }
+}
+
+.signup-selectionHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.signup-selectionCheck {
+  width: 30px;
+  height: 20px;
+  display: none;
+  margin-top: -5px;
+}
+
+.signup-selectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #6078ff;
+}
+
+.signup-selectionDescription {
+  font-size: 18px;
+  color: #8c8c8c;
+  margin-bottom: 10px;
+}
+
+.signup-continue {
+  display: flex;
+  flex-direction: row-reverse;
+
+  @media(max-width: @screen-md-max) {
+    margin-left: @spacing-base;
+    margin-right: @spacing-base;
   }
 }

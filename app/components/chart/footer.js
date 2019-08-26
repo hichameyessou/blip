@@ -1,4 +1,4 @@
-/** @jsx React.DOM */
+
 /*
  * == BSD2 LICENSE ==
  * Copyright (c) 2014, Tidepool Project
@@ -17,86 +17,96 @@
  */
 var bows = require('bows');
 var React = require('react');
-var cx = require('react/lib/cx');
+var cx = require('classnames');
+import { translate } from 'react-i18next';
 
-var tideline = {
-  log: bows('Footer')
-};
+import { components } from '@tidepool/viz';
+const RangeSelect = components.RangeSelect;
 
-var TidelineFooter = React.createClass({
+var TidelineFooter = translate()(React.createClass({
   propTypes: {
     chartType: React.PropTypes.string.isRequired,
     onClickBoxOverlay: React.PropTypes.func,
     onClickGroup: React.PropTypes.func,
     onClickLines: React.PropTypes.func,
     onClickValues: React.PropTypes.func,
+    onClickRefresh: React.PropTypes.func,
     boxOverlay: React.PropTypes.bool,
     grouped: React.PropTypes.bool,
     showingLines: React.PropTypes.bool,
+    showingCbg: React.PropTypes.bool,
+    showingSmbg: React.PropTypes.bool,
     showingValues: React.PropTypes.bool,
-    onClickRefresh: React.PropTypes.func
+    displayFlags: React.PropTypes.object,
+    currentPatientInViewId: React.PropTypes.string,
   },
   render: function() {
+    const { t } = this.props;
     var refreshLinkClass = cx({
       'patient-data-subnav-hidden': this.props.chartType === 'no-data'
     });
 
-    /* jshint ignore:start */
     var showValues = (
       <div className="footer-right-options">
         <label htmlFor="valuesCheckbox">
           <input type="checkbox" name="valuesCheckbox" id="valuesCheckbox"
             checked={this.props.showingValues}
-            onChange={this.props.onClickValues} /> Values
+            onChange={this.props.onClickValues} /> {t('Values')}
         </label>
       </div>
-      );
-    /* jshint ignore:end */
+    );
 
-    /* jshint ignore:start */
-    var modalOpts = (
+    var trendsOpts = (
       <div className="footer-right-options">
         <label htmlFor="overlayCheckbox">
           <input type="checkbox" name="overlayCheckbox" id="overlayCheckbox"
             checked={this.props.boxOverlay}
-            onChange={this.props.onClickBoxOverlay} /> Range &amp; Average
+            onChange={this.props.onClickBoxOverlay} /> {t('Range & Average')}
         </label>
 
         <label htmlFor="groupCheckbox">
           <input type="checkbox" name="groupCheckbox" id="groupCheckbox"
             checked={this.props.grouped}
-            onChange={this.props.onClickGroup} /> Group
+            onChange={this.props.onClickGroup} /> {t('Group')}
         </label>
 
         <label htmlFor="linesCheckbox">
           <input type="checkbox" name="linesCheckbox" id="linesCheckbox"
             checked={this.props.showingLines}
-            onChange={this.props.onClickLines} /> Lines
+            onChange={this.props.onClickLines} /> {t('Lines')}
         </label>
       </div>
-      );
-    /* jshint ignore:end */
+    );
 
-    /* jshint ignore:start */
-    var rightSide = this.props.chartType === 'weekly' ? showValues :
-      this.props.chartType === 'modal' ? modalOpts : null;
-    /* jshint ignore:end */
+    var rightSide = null;
 
-    /* jshint ignore:start */
+    if (this.props.chartType === 'bgLog') {
+      rightSide = showValues;
+    }
+    if (this.props.chartType === 'trends') {
+      if (this.props.showingSmbg) {
+        rightSide = trendsOpts;
+      } else {
+        rightSide = <RangeSelect
+          displayFlags={this.props.displayFlags}
+          currentPatientInViewId={this.props.currentPatientInViewId}
+        />;
+      }
+    }
+
     return (
       <div className="container-box-outer patient-data-footer-outer">
         <div className="container-box-inner patient-data-footer-inner">
           <div className="patient-data-footer-left">
             <button className="btn btn-chart btn-refresh"
               onClick={this.props.onClickRefresh}>
-              Refresh</button>
+              {t('Refresh')}</button>
           </div>
           <div className="patient-data-footer-right">{rightSide}</div>
         </div>
       </div>
-      );
-    /* jshint ignore:end */
+    );
   }
-});
+}));
 
 module.exports = TidelineFooter;

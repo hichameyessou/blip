@@ -1,4 +1,4 @@
-/** @jsx React.DOM */
+
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -14,24 +14,31 @@
  * not, you can obtain one from Tidepool Project at tidepool.org.
  */
 
-var React = require('react');
-var _ = require('lodash');
+import React from 'react';
+import _ from 'lodash';
+import cx from 'classnames';
+import Select from 'react-select';
+
+import DatePicker from '../datepicker';
 
 // Input with label and validation error message
-var InputGroup = React.createClass({
+const InputGroup = React.createClass({
   propTypes: {
     name: React.PropTypes.string,
-    label: React.PropTypes.string,
+    label: React.PropTypes.node,
     items: React.PropTypes.array,
+    text: React.PropTypes.node,
     value: React.PropTypes.oneOfType([
       React.PropTypes.string,
-      React.PropTypes.bool
+      React.PropTypes.bool,
+      React.PropTypes.object // dates for datepicker input type are objects
     ]),
     error: React.PropTypes.string,
-    type: React.PropTypes.string,
+    type: React.PropTypes.string.isRequired,
     placeholder: React.PropTypes.string,
     rows: React.PropTypes.number,
     disabled: React.PropTypes.bool,
+    multi: React.PropTypes.bool,
     onChange: React.PropTypes.func
   },
 
@@ -44,7 +51,6 @@ var InputGroup = React.createClass({
     var message = this.renderMessage();
 
     return (
-      /* jshint ignore:start */
       <div className={className}>
         <div>
           {label}
@@ -52,7 +58,6 @@ var InputGroup = React.createClass({
         </div>
         {message}
       </div>
-      /* jshint ignore:end */
     );
   },
 
@@ -68,12 +73,10 @@ var InputGroup = React.createClass({
 
     if (text) {
       return (
-        /* jshint ignore:start */
         <label
           className="input-group-label"
           htmlFor={htmlFor}
           ref="label">{text}</label>
-        /* jshint ignore:end */
       );
     }
 
@@ -95,8 +98,19 @@ var InputGroup = React.createClass({
       return this.renderRadios();
     }
 
+    if (type === 'select') {
+      return this.renderSelect();
+    }
+
+    if (type === 'datepicker') {
+      return this.renderDatePicker();
+    }
+
+    if (type === 'explanation') {
+      return this.renderExplanation();
+    }
+
     return (
-      /* jshint ignore:start */
       <input
         type={type}
         className="input-group-control form-control"
@@ -107,14 +121,12 @@ var InputGroup = React.createClass({
         onChange={this.handleChange}
         disabled={this.props.disabled}
         ref="control"/>
-      /* jshint ignore:end */
     );
   },
 
   renderTextArea: function() {
     var rows = this.props.rows || this.DEFAULT_TEXTAREA_ROWS;
 
-    /* jshint ignore:start */
     return (
       <textarea
         className="input-group-control form-control"
@@ -127,13 +139,11 @@ var InputGroup = React.createClass({
         disabled={this.props.disabled}
         ref="control"></textarea>
     );
-    /* jshint ignore:end */
   },
 
   renderCheckbox: function() {
 
     return (
-      /* jshint ignore:start */
       <label
         className="input-group-checkbox-label"
         htmlFor={this.props.name}
@@ -150,7 +160,6 @@ var InputGroup = React.createClass({
         {' '}
         {this.props.label}
       </label>
-      /* jshint ignore:end */
     );
   },
 
@@ -159,7 +168,7 @@ var InputGroup = React.createClass({
     var radios = _.map(this.props.items, function(radio, index) {
       var id = self.props.name + index;
       var checked = (self.props.value === radio.value);
-      /* jshint ignore:start */
+
       return (
         <label
           className="input-group-radio-label"
@@ -180,27 +189,76 @@ var InputGroup = React.createClass({
           {radio.label}
         </label>
       );
-      /* jshint ignore:end */
     });
 
     return (
-      /* jshint ignore:start */
       <div className="input-group-radios">
         {radios}
       </div>
-      /* jshint ignore:end */
     );
+  },
+
+  renderSelect: function() {
+    var isMultiSelect = this.props.multi || false;
+
+    var classNames = cx({
+      'input-group-control': true,
+      'form-control': true,
+      'Select': true,
+    });
+
+    let valueArray = [];
+
+    if (!_.isEmpty(this.props.value)) {
+      // Select all provided values that have a corresponding option value
+      valueArray = _.intersectionBy(
+        this.props.items,
+        _.map(this.props.value.split(','), value => ({ value })),
+        'value'
+      );
+    }
+
+    return (
+      <Select
+        className={classNames}
+        classNamePrefix="Select"
+        name={this.props.name}
+        id={this.props.name}
+        isMulti={isMultiSelect}
+        isClearable={isMultiSelect}
+        closeMenuOnSelect={!isMultiSelect}
+        placeholder={this.props.placeholder}
+        value={valueArray}
+        onChange={this.handleChange}
+        isDisabled={this.props.disabled}
+        options={this.props.items}
+      />
+    );
+  },
+
+  renderDatePicker: function() {
+    return (
+      <DatePicker
+        name={this.props.name}
+        value={this.props.value}
+        disabled={this.props.disabled}
+        onChange={this.handleChange} />
+    );
+  },
+
+  renderExplanation: function() {
+    return <div className='input-group-explanation'>
+      {this.props.text}
+    </div>;
   },
 
   renderMessage: function() {
     var error = this.props.error;
     if (error) {
       return (
-        /* jshint ignore:start */
         <div
           className="input-group-message form-help-block"
           ref="message">{error}</div>
-        /* jshint ignore:end */
       );
     }
     return null;
@@ -215,15 +273,21 @@ var InputGroup = React.createClass({
   },
 
   handleChange: function(e) {
-    var target = e.target;
+    var target = (e !== null) ? e.target || e : {};
+
     var attributes = {
-      name: target.name,
-      value: target.value
+      name: target.name || this.props.name,
+      value: target.value || null,
     };
 
     if (this.props.type === 'checkbox') {
       // "Normalize" checkbox change events to use `value` like other inputs
       attributes.value = target.checked;
+    }
+
+    if (this.props.type === 'select' && this.props.multi) {
+      // Target comes in as an array of objects when using react-select's 'multi' attribute
+      attributes.value = target;
     }
 
     var changeCallback = this.props.onChange;

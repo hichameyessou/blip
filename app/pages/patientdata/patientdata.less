@@ -15,19 +15,30 @@
 
 .patient-data {
   margin-bottom: @spacing-large;
+  position: relative;
 }
 
 // Subnav
 // ====================================
 
-@patient-data-subnav-vertical-padding:    @spacing-small;
-@patient-data-subnav-horizontal-padding:  @spacing-small;
+@patient-data-subnav-vertical-padding: @spacing-small;
+@patient-data-subnav-horizontal-padding: @spacing-small;
 
 .patient-data-subnav-inner {
   color: #fff;
   background-color: @gray-dark;
 
-  padding: @patient-data-subnav-vertical-padding 0 @patient-data-subnav-horizontal-padding 0;
+  padding: 0;
+}
+
+.patient-data-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+
+  @media (min-width: @screen-md-lg-min) {
+    justify-content: space-between;
+  }
 }
 
 .patient-data-subnav-text {
@@ -40,17 +51,20 @@
   width: 150px;
 }
 
-.patient-data-subnav-dates-weekly {
+.patient-data-subnav-dates-bgLog {
   width: 220px;
 }
 
-.patient-data-subnav-dates-modal {
-  width: 275px;
+.patient-data-subnav-dates-trends {
+  width: 220px;
 }
 
 .patient-data-subnav a {
   display: inline-block;
-  padding: 0 @patient-data-subnav-vertical-padding 0 @patient-data-subnav-horizontal-padding;
+  padding: 0 @patient-data-subnav-horizontal-padding;
+  &.patient-data-icon {
+    padding: 0;
+  }
 
   color: #fff;
   text-decoration: none;
@@ -82,38 +96,104 @@
 }
 
 .patient-data-subnav-center {
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  padding: @patient-data-subnav-vertical-padding @spacing-small;
 }
 
 .patient-data-subnav-left {
-  text-align: left;
+  padding: @patient-data-subnav-vertical-padding @spacing-small;
 }
 
 .patient-data-subnav-right {
-  text-align: right;
+  padding: @patient-data-subnav-vertical-padding @spacing-small;
 }
 
 .patient-data-subnav-right-label {
   float: right;
 }
 
+.patient-data-subnav .print-loading-spinner {
+  display: inline-block;
+  position: relative;
+  top: 2px;
+  margin-right: 5px;
+}
+
+.patient-data-subnav .printview-print-icon img {
+  padding-right: 5px;
+  height: 16px;
+  position: relative;
+  top: -2px;
+}
+
 // Content
 // ====================================
 
-@patient-data-chart-height:             500px;
+.patient-data-content-outer {
+  display: block;
+
+  @media (min-width: @patient-data-sidebar-bp) {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+}
 
 .patient-data-content-inner {
+  width: 100%;
   background-color: #fff;
-
-  // Bug with message:
-  // If no padding top is set, message top margin will "push" this white block
-  // down, instead of "stretching" it
   padding-top: 5px;
   padding-bottom: 5px;
 }
 
 .patient-data-content {
   min-height: @patient-data-chart-height;
+  position: relative;
+}
+
+// Sidebar
+// ====================================
+
+.patient-data-sidebar {
+  width: 100%;
+  background-color: #fff;
+  padding: @spacing-small;
+
+  @media (min-width: @patient-data-sidebar-bp) {
+    flex-shrink: 0;
+    width: @patient-data-sidebar-width;
+  }
+
+  .toggle-container {
+    margin-bottom: 8px;
+    float: right;
+  }
+}
+
+.patient-data-sidebar-inner {
+  position: relative;
+}
+
+// Loader
+// ====================================
+.patient-data > .loader {
+  height: 540px;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+// Stats
+// ====================================
+.patient-data .Stats {
+  clear: both;
+  display: block;
+  margin: 0;
+
+  > div {
+    margin: 0 0 8px;
+    max-width: 100%;
+  }
 }
 
 // Chart
@@ -122,13 +202,24 @@
 .patient-data-chart {
   width: 100%;
   height: 590px;
-  overflow-y: auto;
 }
 
-.patient-data-chart-modal {
+.patient-data-chart-growing {
+  width: 100%;
+}
+
+.patient-data-chart-trends {
   width: 100%;
   height: 520px;
   overflow: hidden;
+}
+
+.patient-data-chart-trends-no-data {
+  position: absolute;
+  top: 230px;
+  left: 30px;
+  text-align: center;
+  width: 100%;
 }
 
 @media print {
@@ -137,10 +228,9 @@
   }
 
   i {
-      display: none;
+    display: none;
   }
 }
-
 
 // Messages
 // ====================================
@@ -152,7 +242,7 @@
   padding: 30px @spacing-small;
   margin-top: 80px;
 
-  @media(min-width: @patient-data-message-breakpoint) {
+  @media (min-width: @patient-data-message-breakpoint) {
     margin-left: auto;
     margin-right: auto;
     width: 480px;
@@ -164,36 +254,67 @@
   }
 }
 
-.patient-data-message-loading {
-  background: @gray-light;
+.patient-data-loading-message {
+  margin-top: 0px;
+  font-weight: bold;
 }
 
 .patient-data-message-no-data {
-  > a {
-    font-size: 40px;
-    padding: 40px;
-    display: inline-block;
+  text-align: center;
+  margin-top: 80px;
+
+  @media (min-width: @patient-data-message-breakpoint) {
+    margin-left: auto;
+    margin-right: auto;
+    width: 625px;
   }
+
+  h1 {
+    font-size: 26px;
+    font-weight: normal;
+    margin-bottom: @spacing-large;
+  }
+
+  p {
+    font-size: 18px;
+  }
+
+  .uploader-color-override {
+    color: @purple-medium;
+
+    &:hover,
+    &:focus {
+      color: @purple-uploader;
+      text-decoration: none;
+    }
+  }
+}
+
+.patient-no-data-help {
+  margin-top: 210px;
+  line-height: 25px;
 }
 
 // Footer
 // ====================================
 
-@patient-data-footer-vertical-padding:    @spacing-small;
-@patient-data-footer-horizontal-padding:  @spacing-small;
+@patient-data-footer-vertical-padding: @spacing-small;
+@patient-data-footer-horizontal-padding: @spacing-small;
 
 .patient-data-footer-inner {
   padding-left: 0;
   padding-right: 0;
   display: flex;
+  justify-content: space-between;
 
-  min-height: (2*@spacing-small + @line-height-base);
+  min-height: (2 * @spacing-small + @line-height-base);
 }
 
 .patient-data-footer a {
   color: @gray-darkest;
   display: inline-block;
-  padding: @patient-data-footer-vertical-padding @patient-data-footer-horizontal-padding;
+  padding: @patient-data-footer-vertical-padding
+    @patient-data-footer-horizontal-padding;
 
   text-decoration: none;
 
@@ -211,13 +332,18 @@
 }
 
 .patient-data-footer-left {
+  display: flex;
+  justify-content: space-between;
   text-align: left;
   padding: @spacing-small;
+
+  .toggle-container {
+    padding: 0 0 0 15px;
+  }
 }
 
 .patient-data-footer-right {
   text-align: right;
-  flex-grow: 2;
 }
 
 .footer-right-options {
@@ -234,6 +360,9 @@
   .patient-data-subnav-inner {
     color: gray;
     background-color: transparent;
+
+    padding: @patient-data-subnav-vertical-padding
+      @patient-data-subnav-horizontal-padding;
   }
 
   .patient-data-subnav > div:last-child {

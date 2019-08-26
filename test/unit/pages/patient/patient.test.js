@@ -1,65 +1,87 @@
 /* global chai */
+/* global describe */
+/* global sinon */
+/* global it */
+/* global before */
+/* global after */
 
-var React = require('react');
-var TestUtils = require('react/lib/ReactTestUtils');
+import React from 'react';
+import TestUtils from 'react-addons-test-utils';
+
 var expect = chai.expect;
 
-var Patient = require('../../../../app/pages/patient/patient');
-var PatientTeam = require('../../../../app/pages/patient/patientteam');
+import Patient from '../../../../app/pages/patient/patient';
+import { PatientTeam } from '../../../../app/pages/patient/patientteam';
 
 describe('Patient', function () {
-  describe('getInitialState', function() {
-    it('should return an object when showModalOverlay is false', function() {
-      console.warn = sinon.stub();
+  before(() => {
+    Patient.__Rewire__('PatientInfo', React.createClass({
+      render: function() {
+        return (<div className='fake-patient-info-view'></div>);
+      }
+    }));
+  });
+
+  after(() => {
+    Patient.__ResetDependency__('PatientInfo');
+  });
+
+  describe('render', function() {
+    it('should render without problems when required props are present', function() {
+      console.error = sinon.stub();
       var props = {
-        trackMetric: function() {}
+        acknowledgeNotification: sinon.stub(),
+        fetchers: [],
+        fetchingPatient: false,
+        fetchingUser: false,
+        trackMetric: sinon.stub(),
+        dataSources: [],
+        fetchDataSources: sinon.stub(),
+        connectDataSource: sinon.stub(),
+        disconnectDataSource: sinon.stub(),
       };
       var patientElem = React.createElement(Patient, props);
       var elem = TestUtils.renderIntoDocument(patientElem);
+
+      expect(elem).to.be.ok;
+      expect(console.error.callCount).to.equal(0);
+    });
+  });
+
+  describe('getInitialState', function() {
+    it('should return an object', function() {
+      var props = {};
+      var patientElem = React.createElement(Patient, props);
+      var elem = TestUtils.renderIntoDocument(patientElem).getWrappedInstance();
       var initialState = elem.getInitialState();
 
       expect(Object.keys(initialState).length).to.equal(2);
       expect(initialState.showModalOverlay).to.equal(false);
       expect(initialState.dialog).to.equal('');
-      expect(console.warn.callCount).to.equal(0);
-    });
-  });
-
-  describe('render', function() {
-    it('should console.warn when trackMetric not set', function () {
-      console.warn = sinon.stub();
-      var elem = TestUtils.renderIntoDocument(<Patient/>);
-
-      expect(elem).to.be.ok;
-      expect(console.warn.calledWith('Warning: Required prop `trackMetric` was not specified in `Patient`.')).to.equal(true);
-    });
-
-    it('should not console.warn when trackMetric set', function() {
-      console.warn = sinon.stub();
-      var props = {
-        trackMetric: function() {}
-      };
-      var patientElem = React.createElement(Patient, props);
-      var elem = TestUtils.renderIntoDocument(patientElem);
-
-      expect(elem).to.be.ok;
-      expect(console.warn.callCount).to.equal(0);
     });
   });
 
   describe('renderPatientTeam', function() {
     it('should not render when user and patient ids are different', function() {
-      console.warn = sinon.stub();
       var props = {
-        user: {
-          userid: 'foo'
-        },
-        patient: {
-          userid: 'bar',
-          team: []
-        },
+        acknowledgeNotification: sinon.stub(),
+        cancellingInvite: false,
+        changingMemberPermissions: false,
+        fetchers: [],
+        fetchingPatient: false,
+        fetchingUser: false,
+        invitingMemberInfo: {inProgress: false, notification: null},
+        onCancelInvite: sinon.stub(),
+        onChangeMemberPermissions: sinon.stub(),
+        onInviteMember: sinon.stub(),
+        onRemoveMember: sinon.stub(),
+        onUpdatePatient: sinon.stub(),
+        patient: {userid: 'bar', team: []},
+        pendingSentInvites: [],
+        removingMember: false,
         shareOnly: true,
-        trackMetric: function() {}
+        trackMetric: sinon.stub(),
+        user: {userid: 'foo'}
       };
       var patientElem = React.createElement(Patient, props);
       var elem = TestUtils.renderIntoDocument(patientElem);
@@ -68,21 +90,28 @@ describe('Patient', function () {
       };
 
       expect(getShareSection).to.throw(Error);
-      expect(console.warn.callCount).to.equal(0);
     });
 
     it('should not render when shareOnly is false', function() {
-      console.warn = sinon.stub();
       var props = {
-        user: {
-          userid: 'foo'
-        },
-        patient: {
-          userid: 'foo',
-          team: []
-        },
+        acknowledgeNotification: sinon.stub(),
+        cancellingInvite: false,
+        changingMemberPermissions: false,
+        fetchers: [],
+        fetchingPatient: false,
+        fetchingUser: false,
+        invitingMemberInfo: {inProgress: false, notification: null},
+        onCancelInvite: sinon.stub(),
+        onChangeMemberPermissions: sinon.stub(),
+        onInviteMember: sinon.stub(),
+        onRemoveMember: sinon.stub(),
+        onUpdatePatient: sinon.stub(),
+        patient: {userid: 'foo', team: []},
+        pendingSentInvites: [],
+        removingMember: false,
         shareOnly: false,
-        trackMetric: function() {}
+        trackMetric: sinon.stub(),
+        user: {userid: 'foo'}
       };
       var patientElem = React.createElement(Patient, props);
       var elem = TestUtils.renderIntoDocument(patientElem);
@@ -91,51 +120,60 @@ describe('Patient', function () {
       };
 
       expect(getShareSection).to.throw(Error);
-      expect(console.warn.callCount).to.equal(0);
     });
 
     it('should render when shareOnly is true', function() {
-      console.warn = sinon.stub();
       var props = {
-        user: {
-          userid: 'foo'
-        },
-        patient: {
-          userid: 'foo',
-          team: []
-        },
+        acknowledgeNotification: sinon.stub(),
+        cancellingInvite: false,
+        changingMemberPermissions: false,
+        fetchers: [],
+        fetchingPatient: false,
+        fetchingUser: false,
+        invitingMemberInfo: {inProgress: false, notification: null},
+        onCancelInvite: sinon.stub(),
+        onChangeMemberPermissions: sinon.stub(),
+        onInviteMember: sinon.stub(),
+        onRemoveMember: sinon.stub(),
+        onUpdatePatient: sinon.stub(),
+        patient: {userid: 'foo', team: []},
+        pendingSentInvites: [],
+        removingMember: false,
         shareOnly: true,
-        trackMetric: function() {}
+        trackMetric: sinon.stub(),
+        user: {userid: 'foo'}
       };
       var patientElem = React.createElement(Patient, props);
       var elem = TestUtils.renderIntoDocument(patientElem);
       var share = TestUtils.findRenderedDOMComponentWithClass(elem, 'PatientPage-teamSection');
 
       expect(share).to.be.ok;
-      expect(console.warn.callCount).to.equal(0);
     });
 
     it('should transfer all props to patient-team', function() {
-      console.warn = sinon.stub();
       var props = {
-        onCancelInvite: function() {},
-        onChangeMemberPermissions: function() {},
-        onInviteMember: function() {},
-        onRemoveMember: function() {},
-        patient: {
-          userid: 'foo',
-          team: ['coffee', 'mug']
-        },
-        pendingInvites: [
-          { key: 'foo' },
-          { key: 'bar' },
-          { key: 'baz' }
+        acknowledgeNotification: sinon.stub(),
+        cancellingInvite: false,
+        changingMemberPermissions: false,
+        fetchers: [],
+        fetchingPatient: false,
+        fetchingUser: false,
+        invitingMemberInfo: {inProgress: false, notification: null},
+        onCancelInvite: sinon.stub(),
+        onChangeMemberPermissions: sinon.stub(),
+        onInviteMember: sinon.stub(),
+        onRemoveMember: sinon.stub(),
+        onUpdatePatient: sinon.stub(),
+        patient: {userid: 'foo', team: ['coffee', 'mug']},
+        pendingSentInvites: [
+          {key: 'foo'},
+          {key: 'bar'},
+          {key: 'baz'}
         ],
+        removingMember: false,
         shareOnly: true,
-        trackMetric: function() {},
-        user: {
-          userid: 'foo'
-        }
+        trackMetric: sinon.stub(),
+        user: {userid: 'foo'}
       };
       var patientElem = React.createElement(Patient, props);
       var elem = TestUtils.renderIntoDocument(patientElem);
@@ -147,10 +185,9 @@ describe('Patient', function () {
       expect(team.props.onRemoveMember).to.be.ok;
       expect(team.props.patient.userid).to.equal('foo');
       expect(team.props.patient.team.length).to.equal(2);
-      expect(team.props.pendingInvites.length).to.equal(3);
+      expect(team.props.pendingSentInvites.length).to.equal(3);
       expect(team.props.user.userid).to.equal('foo');
       expect(team.props.trackMetric).to.be.ok;
-      expect(console.warn.callCount).to.equal(0);
     });
   });
 });

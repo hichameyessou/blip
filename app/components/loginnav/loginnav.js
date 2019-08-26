@@ -1,4 +1,4 @@
-/** @jsx React.DOM */
+
 /**
  * Copyright (c) 2014, Tidepool Project
  *
@@ -15,10 +15,10 @@
  */
 
 var React = require('react');
+import { translate } from 'react-i18next';
+var Link = require('react-router').Link;
 
-var logoSrc = require('./images/tidepool-logo-370x40.png');
-
-var LoginNav = React.createClass({
+var LoginNav = translate()(React.createClass({
   propTypes: {
     page: React.PropTypes.string,
     hideLinks: React.PropTypes.bool,
@@ -26,18 +26,11 @@ var LoginNav = React.createClass({
   },
 
   render: function() {
-    var logo = this.renderLogo();
     var link = this.renderLink();
 
-    /* jshint ignore:start */
     return (
       <div className="container-nav-outer login-nav">
         <div className="container-nav-inner nav-wrapper">
-          <ul className="nav nav-left">
-            <li>
-              {logo}
-            </li>
-          </ul>
           <ul className="nav nav-right">
             <li>
               {link}
@@ -46,20 +39,6 @@ var LoginNav = React.createClass({
         </div>
       </div>
     );
-    /* jshint ignore:end */
-  },
-
-  renderLogo: function() {
-    /* jshint ignore:start */
-    return (
-      <a
-        href="http://tidepool.org/"
-        target="_blank"
-        className="login-nav-tidepool-logo" >
-        <img src={logoSrc} alt="Tidepool"/>
-      </a>
-    );
-    /* jshint ignore:end */
   },
 
   renderLink: function() {
@@ -67,34 +46,33 @@ var LoginNav = React.createClass({
       return null;
     }
 
+
     var self = this;
-    var page = this.props.page;
-    var href = '#/signup';
+    const {page, t} = this.props;
+    var href = '/signup';
     var className = 'js-signup-link';
     var icon = 'icon-add';
-    var text = 'Sign up';
+    var text = t('Sign up');
     var handleClick = function() {
       self.props.trackMetric('Clicked Sign Up Link');
     };
 
     if (page === 'signup') {
-      href = '#/login';
+      href = '/login';
       className = 'js-login-link';
       icon = 'icon-login';
-      text = 'Log in';
+      text = t('Log in');
       handleClick = function() {
         self.props.trackMetric('Clicked Log In Link');
       };
     }
 
     return (
-      /* jshint ignore:start */
-      <a
-        href={href}
-        className={className}><i className={icon}></i>{' ' + text}</a>
-      /* jshint ignore:end */
+      <Link
+        to={href}
+        className={className}><i className={icon}></i>{' ' + text}</Link>
     );
   }
-});
+}));
 
 module.exports = LoginNav;
